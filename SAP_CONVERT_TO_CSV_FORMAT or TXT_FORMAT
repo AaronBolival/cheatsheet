@@ -1,0 +1,21 @@
+select * from ekko into table @data(lt_ekko) up to 10 rows.
+
+ data i_tab_converted_data  type truxs_t_text_data.
+
+
+
+
+call function 'SAP_CONVERT_TO_CSV_FORMAT'
+  EXPORTING
+*    i_field_seperator    = ';'
+    i_line_header        = 'X'
+*    i_filename           =
+*    i_appl_keep          = space
+  TABLES
+    i_tab_sap_data       = lt_ekko
+  CHANGING
+    i_tab_converted_data = i_tab_converted_data
+*  EXCEPTIONS
+*    conversion_failed    = 1
+*    others               = 2
+  .
