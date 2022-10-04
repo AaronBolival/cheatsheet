@@ -1,0 +1,104 @@
+"Excel Data transfered to t_data_convert=================================
+Row  ROW   COL   VALUE
+======================
+1    0001  0001  101
+2    0001  0002  1
+3    0001  0003  2000
+4    0002  0001  101
+5    0002  0002  2
+6    0002  0003  1000
+7    0003  0001  101
+8    0003  0002  3
+9    0003  0003  2000
+"=========================================================================
+
+TYPES: BEGIN OF ty_input,
+        bwart TYPE mseg-bwart,"movement type x
+        vbeln TYPE likp-vbeln,"delivery number x
+        matnr TYPE mara-matnr,"material x
+      END OF ty_input.
+
+
+CONSTANTS: c_1   TYPE i VALUE 1, "start of header
+           c_2   TYPE i VALUE 2, "start of data
+           c_10  TYPE i VALUE 3, "number of columns
+           c_10k TYPE i VALUE 10000. "number of rows
+
+
+DATA: t_data TYPE filetable,
+      g_rc      TYPE i,
+      g_current TYPE i,
+      g_docnum  TYPE likp-vbeln,
+      t_data_convert  TYPE STANDARD TABLE OF alsmex_tabline,
+      gt_input_data TYPE STANDARD TABLE OF ty_input,
+      gs_input_data LIKE LINE OF gt_input_data.
+
+
+PARAMETERS p_file TYPE localfile. "input file
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
+
+CALL METHOD cl_gui_frontend_services=>file_open_dialog
+*  exporting
+*    file_filter             = |csv (*.csv)\|*.csv\|{ cl_gui_frontend_services=>filetype_all } |
+  CHANGING
+    file_table              = t_data
+    rc                      = g_rc.
+IF sy-subrc <> 0.
+* Implement suitable error handling here
+ENDIF.
+
+READ TABLE t_data ASSIGNING FIELD-SYMBOL(<fs_data>) INDEX 1.
+  IF sy-subrc EQ 0.
+    p_file = <fs_data>-filename.
+  ENDIF.
+
+START-OF-SELECTION.
+CALL FUNCTION 'ALSM_EXCEL_TO_INTERNAL_TABLE'
+  EXPORTING
+    filename                      = p_file
+    i_begin_col                   = C_1
+    i_begin_row                   = c_2
+    i_end_col                     = c_10
+    i_end_row                     = c_10k
+  TABLES
+    intern                        = t_data_convert.
+IF sy-subrc <> 0.
+* Implement suitable error handling here
+ENDIF.
+
+LOOP AT t_data_convert ASSIGNING FIELD-SYMBOL(<fs_convert>).
+    IF g_current IS INITIAL.
+*      place value to g_current for current row being read
+      g_current = <fs_convert>-row.
+    ELSEIF g_current NE <fs_convert>-row.
+*   append previous values
+      APPEND gs_input_data TO gt_input_data.
+*      place new value of new row being read
+      g_current = <fs_convert>-row.
+    ENDIF.
+
+    IF <fs_convert>-col EQ 1.
+      "place movement type
+      gs_input_data-bwart = <fs_convert>-value.
+    ENDIF.
+
+    IF <fs_convert>-col EQ 2.
+      "Delivery document
+      gs_input_data-vbeln = <fs_convert>-value.
+    ENDIF.
+
+    IF <fs_convert>-col EQ 3.
+      "Material
+      gs_input_data-matnr = <fs_convert>-value.
+    ENDIF.
+
+
+clear <fs_convert>-value.
+ENDLOOP.
+
+"append final value
+APPEND gs_input_data TO gt_input_data.
+CLEAR gs_input_data.
+
+
