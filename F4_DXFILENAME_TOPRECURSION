@@ -1,0 +1,30 @@
+    at selection-screen.
+    
+    select single  low from tvarvc into  @data(lt_path) where name = 'MMS022DATADIR'.
+
+            data lv_str type epsdirnam.
+            lv_str = lt_path.
+
+            DATA: lv_c_fnh_mask TYPE dxfields-filemask VALUE '*.*',
+                  lv_search_dir TYPE dxfields-longpath ,
+                  lv_file_path  Type dxfields-longpath.
+
+            lv_search_dir = lv_str.
+
+              CALL FUNCTION 'F4_DXFILENAME_TOPRECURSION'
+                EXPORTING
+                  i_location_flag = 'A'
+                  i_server        = ' '
+                  i_path          = lv_search_dir
+                  filemask        = lv_c_fnh_mask
+                  fileoperation   = 'R'
+                IMPORTING
+                  o_path          = lv_file_path
+                EXCEPTIONS
+                  rfc_error       = 1
+                  OTHERS          = 2.
+
+              IF sy-subrc EQ 0.
+                p_file = lv_file_path.
+                lv_path = p_file.
+              ENDIF.
