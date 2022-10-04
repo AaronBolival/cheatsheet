@@ -1,0 +1,26 @@
+    method validate_date.
+        data: lv_date_low type syst_datlo.
+        data: lv_date_high type syst_datlo.
+
+        call function 'IB_CONVERT_FROM_TIMESTAMP'
+          EXPORTING
+            i_timestamp = s_depart-low
+            i_tzone     = SY-ZONLO
+          IMPORTING
+            e_datlo     = lv_date_low
+          .
+
+        call function 'IB_CONVERT_FROM_TIMESTAMP'
+          EXPORTING
+            i_timestamp = s_depart-high
+            i_tzone     = SY-ZONLO
+          IMPORTING
+            e_datlo     = lv_date_high
+          .
+
+          data(lv_validate) = lv_date_high - lv_date_low.
+
+          if lv_validate > 30.
+            Message text-E02 type 'E' display like 'I'.
+          endif.
+    endmethod.
