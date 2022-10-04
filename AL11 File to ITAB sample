@@ -1,0 +1,57 @@
+        "For AL11 Read Dataset
+    "===================================================================================================
+          data: lt_table type standard table of string,
+                lv_table like line of lt_table.
+
+           open DATASET lv_path for input in text mode encoding default.
+            if sy-subrc = 0.  "subrc = 0 if file exist
+                do.
+                    if sy-subrc = 0.
+                        read dataset lv_path into lv_table.
+                        if lv_table is not initial.
+                            append lv_table to lt_table.
+                        endif.
+                    else.
+                        exit.
+                    endif.
+                enddo.
+            endif.
+            close dataset lv_path
+            
+ loop at lt_table into data(lv_split).
+         if sy-tabix > 1. " =1 if for header column only
+
+            split lv_split at ',' into lv_upload-batch
+                                       lv_upload-auart(4)
+                                       lv_upload-vkorg(4)
+                                       lv_upload-vtweg(2)
+                                       lv_upload-spart(2)
+                                       lv_upload-kunnr_sold(10)
+                                       lv_upload-kunnr_ship(10)
+                                       lv_upload-bstkd(35)
+                                       lv_upload-matnr
+                                       data(lv_kwmeng)
+                                       lv_upload-vrkme(3)
+                                       lv_upload-ketdat(8)
+                                       lv_upload-prsdt(8)
+                                       data(lv_werks).
+
+
+            lv_upload-kwmeng = lv_kwmeng .
+
+
+            lv_upload-werks(4) = lv_werks.
+
+
+            lv_upload-matnr(18) = |{ lv_upload-matnr alpha = IN }|.
+            lv_upload-vtweg = |{ lv_upload-vtweg alpha = in }|.
+            lv_upload-spart = |{ lv_upload-spart alpha = in }|.
+
+            condense: lv_upload-batch , lv_upload-auart, lv_upload-vkorg, lv_upload-vtweg, lv_upload-spart, lv_upload-kunnr_sold, lv_upload-kunnr_ship, lv_upload-bstkd, lv_upload-matnr, lv_upload-vrkme, lv_upload-ketdat, lv_upload-prsdt.
+
+            if lv_upload is not initial.
+                 append lv_upload to lt_upload.
+            endif.
+            
+        endif.
+endloop.
