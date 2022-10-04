@@ -1,0 +1,26 @@
+parameters: p_file type localfile.
+at selection-screen on value-request for p_file.
+
+select single low from tvarvc into @data(lv_tvarvc) where name = 'MMS033DATADIR'. "directory without filename
+
+data: lv_pfad type localfile.
+      lv_pfad = |{ lv_tvarvc }|.
+
+data lv_filename type localfile.
+
+call function 'F4_FILENAME_SERVER'
+  EXPORTING
+    pfad              = lv_pfad
+  IMPORTING
+    file_name         = lv_filename
+*  EXCEPTIONS
+*    no_file_on_server = 1
+*    others            = 2
+  .
+
+IF SY-SUBRC <> 0.
+* MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*   WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+else.
+    p_file = |{ lv_pfad }{ lv_filename }|.
+ENDIF.
