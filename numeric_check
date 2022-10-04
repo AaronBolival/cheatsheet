@@ -1,0 +1,17 @@
+data(lv_numc) = '123123ab'.
+
+data lv_string_out type string.
+data lv_htype type datatype_d.
+
+
+call function 'NUMERIC_CHECK'
+  EXPORTING
+    string_in  = lv_numc
+  IMPORTING
+    string_out = lv_string_out
+    htype      = lv_htype
+  .
+
+if lv_htype = 'CHAR'.
+    write: 'Field not a numc type. Only numbers are allowed'.
+endif.
