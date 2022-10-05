@@ -1,0 +1,33 @@
+types: begin of ts_sflight,
+       carrid type sflight-carrid,
+       connid type sflight-connid,
+       price  type sflight-price,
+       string type string,
+       end of ts_sflight.
+
+data: lt_sflight type standard table of ts_sflight,
+      lv_sflight like line of lt_sflight.
+
+data res type string.
+
+ select carrid, connid, price from sflight into table @data(lt_flight) where seatsmax_b = 31.
+
+
+ loop at lt_flight into data(lv_flight).
+
+    move-corresponding lv_flight to lv_sflight.
+
+    concatenate res lv_flight-carrid into res separated by ','.
+
+
+    at end of carrid.
+
+        lv_sflight-string = res.
+
+    append lv_sflight to lt_sflight.
+    clear res.
+    endat.
+
+
+
+ endloop.
