@@ -1,0 +1,56 @@
+*         call method cl_gui_frontend_services=>gui_upload
+*          EXPORTING
+*            filename                = p_file
+*            has_field_separator     = abap_true
+*          CHANGING
+*            data_tab                = data_tab
+*          EXCEPTIONS
+*            file_open_error         = 1
+*            file_read_error         = 2
+*            no_batch                = 3
+*            gui_refuse_filetransfer = 4
+*            invalid_type            = 5
+*            no_authority            = 6
+*            unknown_error           = 7
+*            bad_data_format         = 8
+*            header_not_allowed      = 9
+*            separator_not_allowed   = 10
+*            header_too_long         = 11
+*            unknown_dp_error        = 12
+*            access_denied           = 13
+*            dp_out_of_memory        = 14
+*            disk_full               = 15
+*            dp_timeout              = 16
+*            not_supported_by_gui    = 17
+*            error_no_gui            = 18
+*            others                  = 19
+*          .
+*            " split data_tab data after ' , ' and append to internal table
+*            loop at data_tab into data(wa).
+*
+*            if sy-tabix > 1.
+*                split wa at ',' into lv_upload-batch
+*                                     lv_upload-auart(4)
+*                                     lv_upload-vkorg(4)
+*                                     lv_upload-vtweg(2)
+*                                     lv_upload-spart(2)
+*                                     lv_upload-kunnr_sold(10)
+*                                     lv_upload-kunnr_ship(10)
+*                                     lv_upload-bstkd(35)
+*                                     lv_upload-matnr
+*                                     data(kwmeng)
+*                                     lv_upload-vrkme(3)
+*                                     lv_upload-ketdat(8)
+*                                     lv_upload-prsdt(8)
+*                                     lv_upload-werks(4).
+*
+*                lv_upload-kwmeng = kwmeng .
+*
+*
+*                lv_upload-matnr(18) = |{ lv_upload-matnr alpha = IN }|.
+*                lv_upload-vtweg = |{ lv_upload-vtweg alpha = in }|.
+*                lv_upload-spart = |{ lv_upload-spart alpha = in }|.
+*
+*                append lv_upload to lt_upload.
+*            endif.
+*            endloop.
