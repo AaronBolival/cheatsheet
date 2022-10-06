@@ -1,0 +1,23 @@
+CALL METHOD cl_ssf_xsf_utilities=>get_bds_graphic_as_bmp
+
+   EXPORTING
+
+     p_object       = 'GRAPHICS' "SAPscript Graphics Management: Application object
+
+     p_name         = 'CH_SWISS_CROSS'"logo Name 
+
+     p_id           = 'BMAP' "SAPscript Graphics Management: ID
+
+     p_btype        = 'BCOL' " SAPscript: Type of graphic    OR BMON
+
+   RECEIVING
+
+     p_bmp          =    logo
+
+   EXCEPTIONS
+
+     not_found      = 1
+
+     internal_error = 2
+
+     others         = 3.
