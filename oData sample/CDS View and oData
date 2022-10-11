@@ -1,0 +1,33 @@
+Create a CDS View
+1. ================================================================================================
+@AbapCatalog.sqlViewName: 'ZCDSODATA'
+@AbapCatalog.compiler.compareFilter: true
+@AbapCatalog.preserveKey: true
+@AccessControl.authorizationCheck: #CHECK
+@EndUserText.label: 'test'
+
+"Add this====================
+@OData.publish: true 
+"============================
+
+
+define view ZCDS_ODATA as select from vbak as vbak
+association [1..1] to lips as lips
+    on vbak.vbeln = lips.vgbel {
+    
+        key vbak.vbeln as vbak_vbeln,
+        lips.vgbel as lips_vgbel,
+        lips.vgtyp as lips_vgtyp,
+        lips.matnr as lips_matnr
+    
+}
+
+
+2. ================================================================================================
+/n/IWFND/MAINT_SERVICE
+Click add service
+- System Alias: Local
+- Technical Service Name: name of cds created
+- back to /n/IWFND/MAINT_SERVICE and click the sap Gateway Client
+- Click Entity Set and then execute
+- XML is generated
