@@ -1,0 +1,56 @@
+"Note this program is not mine
+============================================================================================
+
+INCLUDE zmm_sftp_2_al11_top.
+
+DATA : lv_dir       TYPE eps2filnam,
+       lv_sftp      TYPE eps2filnam,
+       lv_f_name    TYPE string,
+       lv_dir_input TYPE sxpgcolist-parameters,
+       lt_files     TYPE TABLE OF eps2fili,
+       lt_result    TYPE STANDARD TABLE OF btcxpm,
+       ls_files     TYPE eps2fili.
+
+DATA: lv_os_script TYPE sxpgcolist-parameters.
+
+REFRESH lt_result.
+
+WAIT UP TO 4 SECONDS.
+
+CALL FUNCTION 'SXPG_COMMAND_EXECUTE'
+  EXPORTING
+    commandname                   = p_com
+    additional_parameters         = p_script
+*   OPERATINGSYSTEM               = c_oper
+*   TARGETSYSTEM                  = SY-HOST
+*   DESTINATION                   =
+*   STDOUT                        = 'X'
+*   STDERR                        = 'X'
+*   TERMINATIONWAIT               = 'X'
+*   TRACE                         =
+*   DIALOG                        =
+* IMPORTING
+*   STATUS                        =
+*   EXITCODE                      =
+  TABLES
+    exec_protocol                 = lt_result
+  EXCEPTIONS
+    no_permission                 = 1
+    command_not_found             = 2
+    parameters_too_long           = 3
+    security_risk                 = 4
+    wrong_check_call_interface    = 5
+    program_start_error           = 6
+    program_termination_error     = 7
+    x_error                       = 8
+    parameter_expected            = 9
+    too_many_parameters           = 10
+    illegal_command               = 11
+    wrong_asynchronous_parameters = 12
+    cant_enq_tbtco_entry          = 13
+    jobcount_generation_error     = 14
+    OTHERS                        = 15.
+
+IF lt_result IS NOT INITIAL .
+  WAIT UP TO 10 SECONDS.
+ENDIF.
