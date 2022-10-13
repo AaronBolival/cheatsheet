@@ -1,0 +1,129 @@
+*&---------------------------------------------------------------------*
+*& Report zcds_consume
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zcds_consume.
+
+tables: vbak,mara.
+*cl_salv_gui_table_ida=>create_for_cds_view('ZCDS_BASIC_VIEW')->fullscree( )->display( ).
+"ZCDS_ABAP_CONSUME, ZCDSCONSUME
+
+data:
+  lv_cds_view_name  type dbtabl,
+  lo_gui_container  type ref to cl_gui_container ,
+  lo_calc_field_handler  type ref to if_salv_ida_calc_field_handler,
+  lo_alv_gui_table_ida   type ref to if_salv_gui_table_ida.
+
+
+select-options: so_vbeln for vbak-vbeln.
+select-options: so_matnr for mara-matnr.
+
+start-of-selection.
+
+try.
+    lv_cds_view_name = 'ZCDS_ABAP_CONSUME'.
+
+    cl_salv_gui_table_ida=>create_for_cds_view(
+      EXPORTING
+        iv_cds_view_name      = 'ZCDS_ABAP_CONSUME'
+      RECEIVING
+        ro_alv_gui_table_ida  = lo_alv_gui_table_ida
+    ).
+        CATCH cx_salv_db_connection
+              cx_salv_db_table_not_supported
+              cx_salv_ida_contract_violation
+              cx_salv_function_not_supported
+              into data(lv_exc).
+endtry.
+
+perform delete_specific_field. "fieldcatalog delete field
+perform set_column_description. " fieldcatalog change the header text
+perform disable_sort. "field catalog disable sort of specific field
+
+perform prepare_select_option.
+perform set_hotspot_matnr. "add button in toolbar
+
+
+
+
+form delete_specific_field.
+    "fieldcatalog
+    "1. Get the fields of cds
+    lo_alv_gui_table_ida->field_catalog( )->get_available_fields(
+      IMPORTING
+        ets_field_names = data(lt_fields)
+    ).
+    delete lt_fields where table_line = 'POSNR'. "delete the posnr fields in alv ida
+    lo_alv_gui_table_ida->field_catalog( )->set_available_fields( lt_fields ).
+
+
+
+endform.
+
+form set_column_description.
+    lo_alv_gui_table_ida->field_catalog(  )->set_field_header_texts(
+      EXPORTING
+        iv_field_name        = 'VBELN'
+        iv_header_text       = 'Sales Order Number'
+        iv_tooltip_text      = 'IDtooltip'
+        iv_tooltip_text_long = 'IDtooltiplong'
+    ).
+*    CATCH cx_salv_ida_unknown_name.
+*    CATCH cx_salv_call_after_1st_display.
+endform.
+
+form disable_sort.
+    lo_alv_gui_table_ida->field_catalog( )->disable_sort( iv_field_name = 'MATNR ' ).
+*    CATCH cx_salv_ida_unknown_name.
+*    CATCH cx_salv_call_after_1st_display..
+endform.
+
+form prepare_select_option.
+    data(lo_collector) = new cl_salv_range_tab_collector(  ).
+    lo_collector->add_ranges_for_name(
+      EXPORTING
+        iv_name   = 'VBELN'
+        it_ranges = so_vbeln[]
+    ).
+
+    lo_collector->add_ranges_for_name(
+      EXPORTING
+        iv_name   = 'MATNR'
+        it_ranges = so_matnr[]
+    ).
+
+    lo_collector->get_collected_ranges(
+      IMPORTING
+        et_named_ranges = data(lt_name_range)
+    ).
+
+    lo_alv_gui_table_ida->set_select_options(
+      EXPORTING
+        it_ranges    = lt_name_range
+*        io_condition =
+    ).
+*    CATCH cx_salv_ida_associate_invalid.
+*    CATCH cx_salv_db_connection.
+*    CATCH cx_salv_ida_condition_invalid.
+*    CATCH cx_salv_ida_unknown_name.
+
+    lo_alv_gui_table_ida->condition_factory( ).
+endform.
+
+form set_hotspot_matnr.
+    lo_alv_gui_table_ida->toolbar( )->add_button(
+      EXPORTING
+        iv_fcode                     = 'Display'
+        iv_icon                      = '@16@' "https://gist.github.com/hugo-dc/2876488
+        iv_text                      = 'Detail'
+        iv_quickinfo                 = 'Detail'
+    ).
+*    CATCH cx_salv_ida_gui_fcode_reserved..
+endform.
+
+
+
+end-of-selection.
+    data(go) = lo_alv_gui_table_ida->fullscreen( ).
+    go->display( ).
