@@ -1,0 +1,23 @@
+[]   = Range
+example 
+[a-zA-Z0-9]  =   a to z , A to Z  and 0-9
+
+========================================================
+
+^   = start of string 
+$   = end of string
+
+example 2 ^ as not
+[^0-9]  
+replace all occurences of regex '[^0-9]' in lv_string  with ''.
+It will replace all none 0 to 9 characters to blank
+
+========================================================
+
+\r  = Carriage return
+\n  = Line feed
+
+
+=========================================================
+
+{number here} = length
