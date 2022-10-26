@@ -1,0 +1,29 @@
+parameters: p_prodh type t179-prodh.
+
+at selection-screen on value-request for p_prodh.
+
+
+select prodh, stufe from t179 into table @data(lt_prodcatf4).
+
+data lt_return type table of ddshretval.
+
+call function 'F4IF_INT_TABLE_VALUE_REQUEST'
+  EXPORTING
+
+    retfield         = 'PRODH'
+    value_org        = 'S'
+  TABLES
+    value_tab        = lt_prodcatf4
+    return_tab       =  lt_return
+  EXCEPTIONS
+    parameter_error  = 1
+    no_values_found  = 2
+    others           = 3
+  .
+IF SY-SUBRC <> 0.
+* MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*   WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+ENDIF.
+
+read table lt_return into data(lv_return) index 1.
+p_prodh = lv_return-fieldval.
