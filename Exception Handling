@@ -1,0 +1,33 @@
+types: begin of structure,
+       vbeln type vbap-vbeln,
+       volum type vbap-volum,
+       end of structure.
+
+data: lt type standard table of structure,
+      wa like line of lt.
+
+select vbeln, volum from vbap into table @data(lt_vbap) .
+
+
+data exref TYPE REF TO CX_ROOT .
+data msgtxt TYPE STRING.
+try.
+ loop at lt_vbap into data(lv_vbap).
+    lv_vbap-vbeln = 'vbeln'.
+    lv_vbap-volum = 'five'.
+    wa = lv_vbap.
+    append wa to lt.
+ endloop.
+ 
+ 
+catch CX_SY_CONVERSION_NO_NUMBER INTO exref.
+
+"get the text
+msgtxt = exref->GET_TEXT( ).
+
+"or add a message text
+message msgtxt type 'E'.
+
+
+
+endtry.
