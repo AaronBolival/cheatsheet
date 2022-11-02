@@ -1,0 +1,266 @@
+*&---------------------------------------------------------------------*
+*& Report  ZRSD_AIRBOOKN_ABOLIVAL
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+REPORT ZRSD_AIRBOOKN_ABOLIVAL.
+
+TABLES sbook.
+TABLES scarr.
+TABLES SCUSTOM.
+TABLES STRAVELAG.
+
+TYPE-POOLS ZBCTR.
+TYPE-POOLS: SLIS.
+
+TYPES: BEGIN OF ty_alnr, "types airline report
+  carrid TYPE sbook-carrid,
+  carrname TYPE scarr-carrname,
+  connid TYPE sbook-connid,
+  fldate TYPE sbook-fldate,
+  bookid TYPE sbook-bookid,
+  customid TYPE sbook-customid,
+  cust_name TYPE scustom-name,
+  loccuram TYPE sbook-loccuram,
+  loccurkey TYPE sbook-loccurkey,
+  order_date TYPE sbook-order_date,
+  agencynum TYPE sbook-agencynum,
+  agency_name TYPE stravelag-name,
+  cancelled TYPE sbook-cancelled,
+  passname TYPE sbook-passname,
+END OF ty_alnr.
+
+
+
+
+DATA: it_alvrep TYPE STANDARD TABLE OF ty_alnr,
+      wa_alvrep TYPE ty_alnr.
+
+
+DATA: "Internal Tables  -> get_booking_data
+      gt_sbook     TYPE ZBCTR_TT_SBOOK,
+      gt_scustom   TYPE ZBCTR_TT_SCUSTOM,
+      gt_stravelag TYPE	ZBCTR_TT_STRAVELAG,
+      gt_scarr     TYPE ZBCTR_TT_SCARR.
+
+DATA: "WORK ARE FOR the internal table gt_sbook, gt_scustom, gt_stravelag, gt_scarr
+      wa_sbook LIKE LINE OF gt_sbook,
+      wa_scustom LIKE LINE OF gt_scustom,
+      wa_stravelag LIKE LINE OF gt_stravelag,
+      wa_scarr LIKE LINE OF gt_scarr.
+
+
+SELECTION-SCREEN BEGIN OF BLOCK blk1 WITH FRAME TITLE text-001.
+  SELECT-OPTIONS: s_aline FOR sbook-carrid DEFAULT 'AA', " OBLIGATORY nilagay ko muna sa comment,
+                  s_conn FOR sbook-connid,
+                  s_fldate FOR sy-datum ,"OBLIGATORY nilagay ko muna sa comment,
+                  s_book FOR sbook-bookid,
+                  s_cnum FOR sbook-customid.
+  PARAMETERS: p_cncld TYPE sbook-cancelled AS CHECKBOX.
+SELECTION-SCREEN END OF BLOCK blk1.
+*
+SELECTION-SCREEN BEGIN OF BLOCK blk2 WITH FRAME TITLE text-002.
+
+    PARAMETERS: p_dply RADIOBUTTON GROUP rdb1 DEFAULT 'X',
+                p_dwnld RADIOBUTTON GROUP rdb1.
+
+    PARAMETERS: p_file TYPE STRING.
+
+SELECTION-SCREEN END OF BLOCK blk2.
+
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
+  PERFORM save_file USING P_FILE. "file_save_dialog
+
+AT SELECTION-SCREEN ON p_file.
+  IF p_dwnld = 'X'.
+    IF p_file IS INITIAL.
+      MESSAGE e002(ZSD_ABOLIVAL).
+    ELSE.
+      PERFORM check_dir USING p_file. "zbc_directory
+    ENDIF.
+  ENDIF.
+
+
+  START-OF-SELECTION.
+    PERFORM get_travel .
+
+  END-OF-SELECTION.
+    IF p_dwnld = 'X'.
+      PERFORM DL USING p_file it_alvrep.
+    ELSE.
+      PERFORM usesalv USING IT_ALVREP.
+    ENDIF.
+
+
+
+DATA : ld_filename TYPE STRING,
+       ld_fullpath TYPE STRING,
+       gv_result TYPE i.
+
+  FORM SAVE_FILE USING P_FILE.
+
+
+  CALL METHOD CL_GUI_FRONTEND_SERVICES=>FILE_SAVE_DIALOG
+    EXPORTING
+      DEFAULT_EXTENSION         = 'txt'
+      INITIAL_DIRECTORY         = 'C:\'
+    CHANGING
+      FILENAME                  = ld_filename " file name to save | wala pa laman
+      PATH                      = ld_fullpath " path to file  | wala pa laman
+      FULLPATH                  = p_file " path + filename
+*      USER_ACTION               = gv_result " User Action (C Class Const ACTION_OK, ACTION_OVERWRITE etc)
+*      FILE_ENCODING             =
+    EXCEPTIONS
+      CNTL_ERROR                = 1
+      ERROR_NO_GUI              = 2
+      NOT_SUPPORTED_BY_GUI      = 3
+      INVALID_DEFAULT_FILE_NAME = 4
+      others                    = 5.
+    IF SY-SUBRC <> 0.
+*     Implement suitable error handling here
+    ENDIF.
+  ENDFORM.
+
+
+DATA: ld_directory TYPE STRING,
+      ld_result TYPE REF TO CL_FS_PATH.
+
+DATA : forece_absolute TYPE ABAP_BOOL.
+
+FORM CHECK_DIR USING P_FILE.
+TRY.
+DATA: DIR_RESULT TYPE ABAP_BOOL.
+
+ld_directory = p_file.
+  CALL METHOD CL_FS_PATH=>CREATE
+    EXPORTING
+      NAME           = ld_directory  "p_file " filename from select-options
+      FORCE_ABSOLUTE = ABAP_FALSE
+      PATH_KIND      = cl_fs_path=>path_kind_windows  " path_kind_windows  = path is a window path
+    RECEIVING
+      RESULT         = ld_result.
+
+   CATCH CX_SMART_PATH_SYNTAX .
+  ENDTRY.
+  CALL METHOD ld_result->get_path_component "  Call method GET_PATH_COMPONENT to retrieve the directory of the file name
+                                            "Get the path component of the path (w/o file name part)
+    RECEIVING
+      result =  ld_directory.     "base kay google at sa pag kakaintindi ko kukunin nito yung mga components sa directory c:  , folder name, txt file blahblahblah
+
+
+
+  CALL METHOD cl_gui_frontend_services=>directory_exist "Checks whether a directory exists
+    EXPORTING
+      directory            = LD_DIRECTORY " directory name
+    receiving
+      result               = DIR_RESULT  " result
+    EXCEPTIONS
+      cntl_error           = 1
+      error_no_gui         = 2
+      wrong_parameter      = 3
+      not_supported_by_gui = 4
+      others               = 5
+          .
+
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+    MESSAGE: e001(ZSD_ABOLIVAL).
+  ENDIF.
+
+ENDFORM.
+
+
+
+
+FORM GET_TRAVEL.
+  CALL FUNCTION 'ZBC_TRAVEL_GET_BOOKING_DATA'
+    EXPORTING
+      IR_CARRID          = s_aline[]
+      IR_CONNID          = s_conn[]
+      IR_FLDATE          = s_fldate[]
+      IR_BOOKID          = s_book[]
+      IR_CUSTID          = s_cnum[]
+   IMPORTING
+     ET_SBOOK           = gt_sbook
+     ET_SCUSTOM         = gt_scustom
+     ET_STRAVELAG       = gt_stravelag
+     ET_SCARR           = gt_scarr.
+
+    IF p_cncld IS INITIAL.
+      DELETE gt_sbook WHERE cancelled = 'X'.
+    ENDIF.
+    IF gt_sbook IS INITIAL.
+      MESSAGE i000(ZSD_ABOLIVAL).
+    ELSE.
+      LOOP AT gt_sbook INTO wa_sbook.
+        READ TABLE gt_scarr INTO wa_scarr WITH KEY carrid = wa_sbook-carrid.
+        IF sy-subrc = 0.
+         MOVE wa_scarr-carrname TO wa_alvrep-carrname.
+        ENDIF.
+
+        READ TABLE gt_scustom INTO wa_scustom WITH KEY id = wa_sbook-customid.
+        IF sy-subrc = 0.
+         MOVE wa_scustom-name TO wa_alvrep-cust_name.
+        ENDIF.
+
+        READ TABLE gt_stravelag INTO wa_stravelag WITH KEY agencynum = wa_sbook-agencynum.
+        IF sy-subrc = 0.
+          MOVE wa_stravelag-name TO wa_alvrep-agency_name.
+        ENDIF.
+
+        MOVE-CORRESPONDING wa_sbook TO wa_alvrep.
+
+        APPEND wa_alvrep TO it_alvrep.
+
+      ENDLOOP.
+    ENDIF.
+ENDFORM.
+
+DATA: r_table TYPE REF TO cl_salv_table,
+      r_column TYPE REF TO cl_salv_column.
+
+*DATA: lr_functions TYPE REF TO cl_salv_functions_list. " if need ng data declaration
+
+
+FORM usesalv USING it_alvrep.
+TRY.
+CALL METHOD CL_SALV_TABLE=>FACTORY
+*  EXPORTING
+*    LIST_DISPLAY   = IF_SALV_C_BOOL_SAP=>FALSE
+*    R_CONTAINER    =
+*    CONTAINER_NAME =
+  IMPORTING
+    R_SALV_TABLE   = r_table
+  CHANGING
+    T_TABLE        = it_alvrep.
+ CATCH CX_SALV_MSG .
+ENDTRY.
+
+*    lr_functions = r_table->get_functions( ).
+*    lr_functions->set_default( abap_true ).
+*    lr_functions->set_all( abap_true ).
+
+*     or
+      r_table->get_functions( )->set_all( abap_true ).
+
+      r_table->display( ). " to display the ALV
+ENDFORM.
+
+
+
+FORM DL USING P_FILE P_IT_ALVREP.
+  CALL METHOD cl_gui_frontend_services=>gui_download
+  EXPORTING
+    filename = p_file"ld_filename
+  CHANGING
+    data_tab = it_alvrep
+  EXCEPTIONS
+    OTHERS   = 24.
+
+  IF sy-subrc = 0.
+    MESSAGE: s003(ZSD_ABOLIVAL).
+  ENDIF.
+ENDFORM.
