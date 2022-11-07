@@ -1,0 +1,79 @@
+*&---------------------------------------------------------------------*
+*& Report zaj_singleton
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zaj_singleton.
+
+parameters p_carrid type scarr-carrid.
+
+class lcl_singleton definition.
+    public section.
+
+        "for singleton
+        class-data o_singleton type ref to lcl_singleton.
+        class-methods: get_instance returning value(re_obj) type ref to lcl_singleton.
+
+        "for scarr using local types
+        types: begin of ts_scarr,
+            carrid type scarr-carrid,
+            carrname type scarr-carrname,
+        end of ts_scarr.
+        types: ty_scarr type standard table of ts_scarr with default key.
+        methods get_scarr
+                          returning
+                            value(ret_scarr) type ty_scarr.
+
+        data lt_scarr type standard table of ts_scarr.
+
+        "display alv
+        methods: display_alv.
+        data: lo_salv_table type ref to cl_salv_table.
+
+        "validate
+        methods: validate.
+
+endclass.
+class lcl_singleton implementation.
+    method get_instance. "check if class already instantiated
+        if o_singleton is bound.
+            re_obj = o_singleton.
+        else.
+            create object o_singleton.
+            re_obj = o_singleton.
+        endif.
+    endmethod.
+
+    method get_scarr.
+        select * from scarr into corresponding fields of table @ret_scarr where carrid = @p_carrid.
+        lt_scarr = ret_scarr.
+
+        call method display_alv.
+    endmethod.
+    method display_alv.
+        cl_salv_table=>factory(
+          IMPORTING
+            r_salv_table   = lo_salv_table
+          CHANGING
+            t_table        = lt_scarr
+        ).
+*        CATCH cx_salv_msg.
+        lo_salv_table->display( ).
+    endmethod.
+    method validate.
+        if p_carrid is initial.
+            message 'Display all' type 'I'.
+        else.
+            message |Display { p_carrid }| type 'I'.
+        endif.
+    endmethod.
+endclass.
+
+
+
+at selection-screen.
+    lcl_singleton=>get_instance( )->validate( ).
+
+start-of-selection.
+
+    lcl_singleton=>get_instance( )->get_scarr( ).
