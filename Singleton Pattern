@@ -1,0 +1,27 @@
+REPORT zaj_singleton.
+
+
+class lcl_zaj_singleton definition.
+    public section.
+        class-methods: GET_ZAJ_SINGLETON returning
+            value(ret_zaj_sigleton_objref) type ref to lcl_zaj_singleton.
+
+*        methods: constructor.
+    private section.
+        class-data: obj_ref type ref to lcl_zaj_singleton.
+endclass.
+class lcl_zaj_singleton implementation.
+*    method constructor.
+*        message 'Singleton Pattern' type 'I'.
+*    endmethod.
+    method get_zaj_singleton.
+        create object obj_ref.
+        ret_zaj_sigleton_objref = obj_ref.
+    endmethod.
+endclass.
+
+initialization.
+    data(obj) = new lcl_zaj_singleton(  ).
+
+start-of-selection.
+    obj = lcl_zaj_singleton=>get_zaj_singleton( ).
