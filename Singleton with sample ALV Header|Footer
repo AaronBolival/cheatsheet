@@ -1,0 +1,187 @@
+*&---------------------------------------------------------------------*
+*& Report zaj_singleton
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zaj_singleton.
+
+parameters p_carrid type scarr-carrid.
+
+class lcl_singleton definition.
+    public section.
+
+        "for singleton
+        class-data o_singleton type ref to lcl_singleton.
+        class-methods: get_instance returning value(re_obj) type ref to lcl_singleton.
+
+        "for scarr using local types
+        types: begin of ts_scarr,
+            carrid type scarr-carrid,
+            carrname type scarr-carrname,
+        end of ts_scarr.
+        types: ty_scarr type standard table of ts_scarr with key carrid.
+        methods get_data importing
+                            id               type scarr-carrid
+                         returning
+                            value(ret_scarr) type ty_scarr.
+
+        data lt_scarr type standard table of ts_scarr.
+
+        "display alv
+        methods: display_alv.
+        data: lo_salv_table type ref to cl_salv_table.
+
+        "validate
+        methods: validate.
+
+        "
+
+
+endclass.
+class lcl_singleton implementation.
+
+    method get_instance. "check if class already instantiated
+        if o_singleton is bound.
+            re_obj = o_singleton.
+        else.
+            create object o_singleton.
+            re_obj = o_singleton.
+        endif.
+    endmethod.
+
+    method get_data.
+
+        if id is initial.
+            select carrid,carrname from scarr into corresponding fields of table @ret_scarr.
+            lt_scarr = ret_scarr.
+        else.
+            select carrid,carrname from scarr into corresponding fields of table @ret_scarr where carrid = @id.
+            lt_scarr = ret_scarr.
+        endif.
+
+        call method display_alv.
+    endmethod.
+    method display_alv.
+
+
+        "Set header
+        data(lo_grid_header) = new cl_salv_form_layout_grid(  ).
+
+        " Head line
+        lo_grid_header->create_header_information(
+          EXPORTING
+            row     = 1
+            column  = 1
+*            rowspan =
+*            colspan =
+            text    = 'Headline'
+*            tooltip =
+*          RECEIVING
+*            r_value =
+        ).
+        " Action Text
+        lo_grid_header->create_action_information(
+          EXPORTING
+            row     = 2
+            column  = 1
+*            rowspan =
+*            colspan =
+            text    = 'Action Text'
+*            tooltip =
+*          RECEIVING
+*            r_value =
+        ).
+        " Floating Text
+        lo_grid_header->create_flow(
+          EXPORTING
+            row     = 3
+            column  = 1
+        )->create_text(
+*          EXPORTING
+*            position =
+            text     = 'Headerflow:'
+*            tooltip  =
+*          RECEIVING
+*            r_value  =
+        ).
+        lo_grid_header->create_flow(
+          EXPORTING
+            row     = 3
+            column  = 1
+        )->create_text(
+*          EXPORTING
+*            position =
+            text     = 'Floating Text:'
+*            tooltip  =
+*          RECEIVING
+*            r_value  =
+        ).
+
+        "Group box
+        data(lo_grp_head) = new cl_salv_form_groupbox( header = 'Groupbox' ).
+        lo_grid_header->set_element(
+          EXPORTING
+            row       = 4
+            column    = 1
+            r_element = lo_grp_head
+        ).
+        data(lo_grp_head_grid) = lo_grp_head->create_grid(  ).
+        lo_grp_head_grid->set_grid_lines( if_salv_form_c_grid_lines=>no_lines ).
+
+        "Label + text
+        data(lo_label_1) = lo_grp_head_grid->create_label( row = 1 column = 1 text = |Label 1 | ).
+        data(lo_text_1) = lo_grp_head_grid->create_text( row = 1 column = 2 text = |Text 1| ).
+
+        data(lo_label_2) = lo_grp_head_grid->create_label( row = 1 column = 3 text = |Label 2 | ).
+        data(lo_text_2) = lo_grp_head_grid->create_text( row = 1 column = 4 text = |Text 2| ).
+
+        cl_salv_table=>factory(
+          IMPORTING
+            r_salv_table   = lo_salv_table
+          CHANGING
+            t_table        = lt_scarr
+        ).
+*        CATCH cx_salv_msg.
+
+
+
+        "Display Header
+        lo_salv_table->set_top_of_list( lo_grid_header ).
+
+        "Set Footer
+        data(lo_grid_footer) = new cl_salv_form_layout_grid(  ).
+
+        "Action Text
+        lo_grid_footer->create_action_information(
+          EXPORTING
+            row     = 2
+            column  = 1
+*            rowspan =
+*            colspan =
+            text    = |Total Records: { lines( lt_scarr ) }|
+*            tooltip =
+*          RECEIVING
+*            r_value =
+        ).
+        "Display footer
+        lo_salv_table->set_end_of_list( value = lo_grid_footer ).
+
+        lo_salv_table->display( ).
+    endmethod.
+    method validate.
+        if p_carrid is initial.
+            message 'Display all' type 'I'.
+        else.
+            message |Display { p_carrid }| type 'I'.
+        endif.
+    endmethod.
+endclass.
+
+initialization.
+
+at selection-screen.
+    lcl_singleton=>get_instance( )->validate( ).
+
+start-of-selection.
+
+    lcl_singleton=>get_instance( )->get_data( id = p_carrid ).
