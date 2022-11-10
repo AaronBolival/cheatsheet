@@ -1,0 +1,51 @@
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"Class
+
+"Interface collection of methods without implementation | Definition only | just a template like include etc
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+INTERFACE lif_interface.
+    data v3 type i.
+    methods: operation importing im_v1 type i
+                                 im_v2 type i
+             ,
+             display.
+endinterface.
+
+class lcl_class definition.
+    public section.
+       methods:
+                constructor.
+       interfaces lif_interface.
+
+
+    private section.
+
+
+endclass.
+class lcl_class implementation.
+  method constructor.
+
+  endmethod.
+  method lif_interface~operation.
+      lif_interface~v3 = im_v1 + im_v2.
+  endmethod.
+  method lif_interface~display.
+      write : / 'Result: ', lif_interface~v3 .
+  endmethod.
+
+endclass.
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"Endclass
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+initialization.
+
+start-of-selection.
+data(obj) = new lcl_class(  ).
+
+obj->lif_interface~operation(
+  EXPORTING
+    im_v1 = 1
+    im_v2 = 5
+).
+obj->lif_interface~display( ).
