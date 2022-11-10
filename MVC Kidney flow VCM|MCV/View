@@ -1,0 +1,49 @@
+CLASS zaj_mvc_v DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+    methods constructor.
+
+    methods get_id importing iv_carrid type scarr-carrid.
+    methods set_id_to_c.
+    data lv_carrid type scarr-carrid.
+
+
+    data obj_controller type ref to zaj_mvc_c.
+    data obj_view type ref to zaj_mvc_v.
+
+    methods get_scarr_c importing gt_scarr_from_c type zaj_mvc_m=>zty_scarr.
+
+
+
+ENDCLASS.
+CLASS zaj_mvc_v IMPLEMENTATION.
+    method constructor.
+        create object obj_controller.
+    endmethod.
+    method get_id.
+        data(id) = iv_carrid.
+        me->lv_carrid = id.
+
+        call method set_id_to_c.
+    endmethod.
+    method set_id_to_c.
+
+        obj_controller->get_id_v( iv_carrid_c = me->lv_carrid ).
+
+    endmethod.
+    method get_scarr_c.
+        data(lt_scarr) = gt_scarr_from_c.
+
+        cl_salv_table=>factory(
+          IMPORTING
+            r_salv_table   = data(lo_salv_table)
+          CHANGING
+            t_table        =  lt_scarr
+        ).
+        lo_salv_table->display( ).
+    endmethod.
+
+ENDCLASS.
