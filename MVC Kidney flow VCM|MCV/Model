@@ -1,0 +1,60 @@
+CLASS zaj_mvc_m DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+
+    types: begin of ts_scarr,
+        carrid type scarr-carrid,
+        carrname type scarr-carrname,
+        index   type sy-tabix,
+    end of ts_scarr.
+    types: zty_scarr type standard table of ts_scarr.
+
+    methods get_scarr.
+    data gt_scarr type zty_scarr .
+
+    methods get_id_m    importing iv_carrid_m type scarr-carrid.
+    data: lv_carrid_m   type scarr-carrid.
+
+    "object
+    class-data: obj_data_model type ref to zaj_mvc_m.
+    class-methods object_method_model returning value(ret_model) type ref to zaj_mvc_m.
+
+
+
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+        data obj_controller type ref to zaj_mvc_c.
+ENDCLASS.
+
+
+
+CLASS zaj_mvc_m IMPLEMENTATION.
+    method object_method_model.
+        if obj_data_model is bound.
+            ret_model = obj_data_model.
+        else.
+            create object obj_data_model.
+            ret_model = obj_data_model.
+        endif.
+
+    endmethod.
+    method get_id_m.
+        lv_carrid_m = iv_carrid_m.
+        call method get_scarr.
+    endmethod.
+    method get_scarr.
+
+        if lv_carrid_m is initial.
+            select * from scarr into table @data(lt_scarr_all).
+            move-corresponding lt_scarr_all to gt_scarr.
+        else.
+            select * from scarr into table @data(lt_scarr) where carrid = @lv_carrid_m.
+            move-corresponding lt_scarr to gt_scarr.
+        endif.
+        create object obj_controller.
+        obj_controller->get_scarr_m( gt_scarr_from_m =  gt_scarr ).
+    endmethod.
+ENDCLASS.
