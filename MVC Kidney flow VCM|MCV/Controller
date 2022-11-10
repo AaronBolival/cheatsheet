@@ -1,0 +1,45 @@
+CLASS zaj_mvc_c DEFINITION
+  PUBLIC
+*  FINAL
+  CREATE PUBLIC .
+
+  PUBLIC SECTION.
+    methods constructor.
+    methods get_id_v importing iv_carrid_c type scarr-carrid.
+    data lv_carrid_c type scarr-carrid.
+
+    methods get_scarr_m importing gt_scarr_from_m type zaj_mvc_m=>zty_scarr.
+    data gt_scarr type zaj_mvc_m=>zty_scarr.
+    methods: send_scarr_to_v.
+
+
+  PRIVATE SECTION.
+    data obj_view_v type ref to zaj_mvc_v.
+    data obj_view_m type ref to zaj_mvc_m.
+
+
+ENDCLASS.
+CLASS zaj_mvc_c IMPLEMENTATION.
+    method constructor.
+    endmethod.
+    method get_id_v.
+       lv_carrid_c = iv_carrid_c.
+
+       create object obj_view_m.
+       obj_view_m->get_id_m( iv_carrid_m = lv_carrid_c ).
+
+
+    endmethod.
+    method get_scarr_m.
+        gt_scarr = gt_scarr_from_m.
+        call method send_scarr_to_v.
+    endmethod.
+    method send_scarr_to_v.
+        create object obj_view_v.
+        obj_view_v->get_scarr_c( gt_scarr_from_c = gt_scarr  ).
+
+    endmethod.
+
+
+
+ENDCLASS.
