@@ -1,0 +1,81 @@
+TYPES: BEGIN OF t_datatab,
+      col1(30)    TYPE c,
+      col2(30)    TYPE c,
+      col3(30)    TYPE c,
+      END OF t_datatab.
+
+parameters: p_file type string.
+DATA: i_tab TYPE STANDARD TABLE OF t_datatab.
+    DATA: lv_rc     TYPE i,
+          lt_files  TYPE filetable.
+at selection-screen on value-request for p_file.
+      CALL METHOD cl_gui_frontend_services=>file_open_dialog(
+        CHANGING
+          file_table              = lt_files
+          rc                      = lv_rc
+        EXCEPTIONS
+          file_open_dialog_failed = 1
+          cntl_error              = 2
+          error_no_gui            = 3
+          not_supported_by_gui    = 4
+          OTHERS                  = 5
+      ).
+      IF lv_rc GT 0.
+        READ TABLE lt_files INDEX 1 INTO p_file.
+      ENDIF.
+
+start-of-selection.
+DATA : lv_filename      TYPE string,
+         lt_records       TYPE solix_tab,
+         lv_headerxstring TYPE xstring,
+         lv_filelength    TYPE i.
+
+   lv_filename = p_file.
+
+cl_gui_frontend_services=>gui_upload(
+  EXPORTING
+    filename                = lv_filename
+    filetype                = 'BIN'
+  IMPORTING
+    filelength              = lv_filelength
+    header                  = lv_headerxstring
+  CHANGING
+    data_tab                = lt_records
+).
+
+call function 'SCMS_BINARY_TO_XSTRING'
+  EXPORTING
+    input_length = lv_filelength
+*    first_line   = 0
+*    last_line    = 0
+  IMPORTING
+    buffer       = lv_headerxstring
+  TABLES
+    binary_tab   = lt_records
+*  EXCEPTIONS
+*    failed       = 1
+*    others       = 2
+  .
+
+  try.
+
+        DATA : lo_excel_ref TYPE REF TO cl_fdt_xl_spreadsheet .
+               lo_excel_ref = NEW cl_fdt_xl_spreadsheet(
+                              document_name = lv_filename
+                              xdocument     = lv_headerxstring ) .
+
+        lo_excel_ref->if_fdt_doc_spreadsheet~get_worksheet_names(
+          IMPORTING
+            worksheet_names = DATA(lt_worksheets)
+        ).
+        DATA(lv_woksheetname) = lt_worksheets[ 1 ].  "Read first sheet
+        DATA(lo_data_ref) = lo_excel_ref->if_fdt_doc_spreadsheet~get_itab_from_worksheet(
+                                         lv_woksheetname ).
+
+        ASSIGN lo_data_ref->* TO FIELD-SYMBOL(<lfs_data_tab>). " final table with column header A,B,C
+*        cl_demo_output=>display( <lfs_data_tab> ).
+
+        CATCH cx_fdt_excel_core.
+       "Error handling
+
+  ENDTRY.
