@@ -1,0 +1,136 @@
+*&---------------------------------------------------------------------*
+*& Report zaj_itab_html_1
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+Report zaj_itab_html_1.
+
+parameters p_dummy type i modif id P_1.
+
+class lcl_scarr definition.
+  public section.
+    data:
+          g_html_viewer      type ref to CL_GUI_HTML_VIEWER.
+
+    data: o_splitter_main type ref to cl_gui_splitter_container,
+          o_container_top type ref to cl_gui_container,
+          o_container_bot  type ref to cl_gui_container,
+          o_salv_table type ref to cl_salv_table.
+
+
+    methods: main,
+             on_html_event for event sapevent of cl_gui_html_viewer importing
+                                                                        action
+                                                                        frame
+                                                                        getdata
+                                                                        query_table
+                                                                        .
+
+    data: gt_carrid type scarr-carrid,
+          gt_carrname type scarr-carrname,
+          gt_querytable type cnht_query_table.
+    data: gt_scarr type standard table of scarr.
+    data: gt_scarr_salv type standard table of scarr.
+    data: oref type ref to cl_gui_html_viewer,
+          lo_alv_oref type ref to cl_gui_html_viewer.
+
+
+endclass.
+
+class lcl_scarr implementation.
+ method on_html_event.
+    data: l_string type string.
+    l_string = getdata.
+
+    me->gt_querytable = query_table.
+
+    message i001(00) with l_string.
+
+  endmethod.
+
+  method main.
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" For html screen
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    data lo_oref type ref to lcl_scarr.
+    data html type w3htmltab.
+    data url type c length 255.
+
+
+        create object oref
+            exporting
+                parent = cl_gui_container=>default_screen
+                .
+
+
+        data events type cntl_simple_events.
+        data event  type cntl_simple_event.
+
+        event-eventid = oref->m_id_sapevent.
+        event-appl_event = 'X'.
+        append event to events.
+
+        call method oref->set_registered_events
+          EXPORTING
+            events                    = events.
+
+        set handler me->on_html_event for oref.
+
+        html =  value string_table(
+                                   ( | <html> | )
+                                    ( | <body bgcolor="#FFFCC"> | )
+                                     ( | <h1>Carrier</h1> | )
+                                      ( | <form name="form1" action="SAPEVENT:save"> | )
+                                        ( | <label>Carrier ID</label> | )
+                                        ( | <input type="text" name="carrierid" required> | )
+                                        ( | <br> | )
+                                        ( | <label>Carrier Name</label> | )
+                                        ( | <input type="text" name="carriername"> | )
+                                        ( | <br> | )
+                                        ( | <input type="Submit" value="Submit"> | )
+                                      ( | </form> | )
+                                    ( | </body>| )
+                                   ( | </html> | )
+                                  ).
+
+        oref->load_data(
+          IMPORTING
+            assigned_url           = url
+          CHANGING
+            data_table             = html
+        ).
+
+        oref->show_url( url = url ).
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"end of html screen
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+  endmethod.
+
+endclass.
+
+
+initialization.
+data lo_obj type ref to lcl_scarr.
+at selection-screen.
+  LOOP AT SCREEN.
+    IF screen-group1 = 'P_1'.
+      screen-output = '0'.
+      screen-active = '0'.
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
+
+at selection-screen output.
+
+*data(lo_obj) = new lcl_scarr(  ).
+*lo_obj->main( ).
+
+IF lo_obj IS NOT BOUND.
+ CREATE OBJECT lo_obj.
+ CALL METHOD lo_obj->main.
+ENDIF.
