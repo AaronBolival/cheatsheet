@@ -1,0 +1,130 @@
+*&---------------------------------------------------------------------*
+*& Report zaj_itab_html_1
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zaj_itab_html_1.
+
+
+
+data: g_custom_container type ref to cl_gui_custom_container,
+      g_docking          type ref to cl_gui_docking_container,
+      g_html_viewer       type ref to object.
+
+constants c_selection_screen_1900 type sydynnr value 9000. "used for navigation in case of several screens | nag set ng new screen for selection screen
+
+
+SELECTION-SCREEN begin of screen 9000.
+    PARAMETERS : p_test TYPE char10.
+*SELECTION-SCREEN SKIP 2.
+*SELECTION-SCREEN BEGIN OF LINE.
+* SELECTION-SCREEN COMMENT  1(6)  text-001 FOR FIELD testrun. " Test 1
+    PARAMETERS testrun  RADIOBUTTON GROUP exec.
+* SELECTION-SCREEN COMMENT 12(83) text-011 FOR FIELD testrun. " Action 1
+*SELECTION-SCREEN END OF LINE.
+*SELECTION-SCREEN BEGIN OF LINE.
+* SELECTION-SCREEN COMMENT  1(6)  text-002  FOR FIELD update. " Test 2
+    PARAMETERS update  RADIOBUTTON GROUP exec.
+* SELECTION-SCREEN COMMENT 12(83) text-012 FOR FIELD testrun. " Action 2
+*SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN END OF screen 9000.
+
+
+at selection-screen output.
+    data: l_ratio type i value 85.
+    if sy-scols <> 0.
+        l_ratio = 100 - ( 60 * 100 / sy-scols ).
+    endif.
+
+    if g_docking is initial.
+
+*            CREATE OBJECT g_docking
+*              EXPORTING
+*                repid                       = sy-repid
+*                dynnr                       = sy-dynnr
+*                side                        = cl_gui_docking_container=>dock_at_right
+*                ratio                       = l_ratio
+*              EXCEPTIONS
+*                cntl_error                  = 1
+*                cntl_system_error           = 2
+*                create_error                = 3
+*                lifetime_error              = 4
+*                lifetime_dynpro_dynpro_link = 5.
+*            CHECK sy-subrc EQ 0.  "simply leave in case of any problem
+  "or
+           create object g_docking.
+           g_docking->dock_at(
+             EXPORTING
+               side              = cl_gui_docking_container=>dock_at_right
+           ).
+
+           g_docking->link(
+             EXPORTING
+               repid                       = sy-repid
+               dynnr                       = sy-dynnr
+           ).
+
+           g_docking->set_width(
+             EXPORTING
+               width      = 250
+           ).
+
+           CREATE OBJECT g_html_viewer TYPE ('CL_GUI_HTML_VIEWER')
+              EXPORTING
+                parent             = g_docking
+              EXCEPTIONS
+                cntl_error         = 1
+                cntl_install_error = 2
+                dp_install_error   = 3
+                dp_error           = 4.
+            CHECK sy-subrc EQ 0.  "simply leave in case of any problem
+
+            CALL METHOD cl_gui_cfw=>flush
+              EXCEPTIONS
+                cntl_system_error = 1
+                cntl_error        = 2.
+            CHECK sy-subrc EQ 0.  "simply leave in case of any problem
+    endif.
+    
+    
+    data: lt_html  type standard table of abaptxt255,
+          l_url(255).
+
+      APPEND '<html><body>'                    TO lt_html.      "#EC NOTEXT
+      APPEND '<br><br>'                        TO lt_html.      "#EC NOTEXT
+      APPEND '<h3 style="color:red">Test HTML :</h3>'            TO lt_html.      "#EC NOTEXT
+      APPEND '<ul>'                            TO lt_html.      "#EC NOTEXT
+      APPEND '<li>Unordered list element</li>' TO lt_html.      "#EC NOTEXT
+      APPEND '<li>2nd item</li>'               TO lt_html.      "#EC NOTEXT
+      APPEND '</ul>'                           TO lt_html.      "#EC NOTEXT
+      APPEND '</body></html>'                  TO lt_html.      "#EC NOTEXT
+
+
+
+       CALL METHOD g_html_viewer->('LOAD_DATA')
+        EXPORTING
+          type                 = 'text'
+          subtype              = 'html'
+        IMPORTING
+          assigned_url         = l_url
+        CHANGING
+          data_table           = lt_html
+        EXCEPTIONS
+          dp_invalid_parameter = 1
+          dp_error_general     = 2
+          cntl_error           = 3
+          OTHERS               = 4.
+
+
+      CHECK sy-subrc EQ 0.
+
+      CALL METHOD g_html_viewer->('SHOW_URL')
+        EXPORTING
+          url        = l_url
+*         frame      = l_frame
+        EXCEPTIONS
+          cntl_error = 0.      "simply ignore any problem
+
+
+start-of-selection.
+    call screen 9000.
