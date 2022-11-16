@@ -1,0 +1,775 @@
+"------------------------------------------------------------------------------------------------------------------------------------------
+"                                                                     Main
+"------------------------------------------------------------------------------------------------------------------------------------------
+include:
+         ztm_cost_analysis_top,
+         ztm_cost_analysis_cls.
+
+initialization.
+    data(lo_charges_report) = new lcl_charges_report(  ).
+
+at selection-screen output.
+    lo_charges_report->show_hide(  ).
+
+at selection-screen on s_depart.
+    lo_charges_report->validate_date(  ).
+
+
+start-of-selection.
+lo_charges_report->get_data(  ).
+
+"------------------------------------------------------------------------------------------------------------------------------------------
+"                                                                  Local Class
+"------------------------------------------------------------------------------------------------------------------------------------------
+
+*&---------------------------------------------------------------------*
+*& Include ztm_cost_analysis_cls
+*&---------------------------------------------------------------------*
+
+class lcl_charges_report definition.
+    public section.
+        methods:
+                 get_data,
+                 validate_date,
+                 show_hide,
+                 fcat,
+                 sales,
+                 purchase,
+                 stock_transfer.
+    private section.
+
+      data: lo_table type ref to cl_salv_table,
+            lo_salv_functions type ref to cl_salv_functions_list.
+      data: lo_colt type ref to cl_salv_columns_table,
+            lo_col type ref to cl_salv_column.
+
+        "structure for sales select query
+        types: begin of ts_sales,
+               SalesId type vbak-vbeln,
+               GrossWeight type vbap-brgew,
+               GrossWeightUnit type vbap-meins,
+               GrossVolume type vbap-volum,
+               GrossVolumeUnit type vbap-voleh,
+               SalesOrg type vbak-vkorg,
+               DepartureDateF type /scmtms/d_torexe-actual_date,"/scmtms/d_torstp-appointment_start,
+               TMDocs type string, " /scmtms/d_torrot-tor_id,
+               Deliveries type string,
+               MTR type string, "/scmtms/d_torrot-mtr,
+               Amount type /scmtms/d_tcditm-amount,
+               CurrCode type /scmtms/d_tcditm-currcode016,
+               Carrier type string," /scmtms/d_torrot-tspid,
+               end of ts_sales.
+
+        "structure for purchase select query
+        types: begin of ts_purchase,
+               PurchaseId type ekko-ebeln,
+               GrossWeight type vbap-brgew,
+               GrossWeightUnit type vbap-meins,
+               GrossVolume type vbap-volum,
+               GrossVolumeUnit type vbap-voleh,
+               PurchaseOrg type ekko-ekorg,
+               ArrivalDate type /scmtms/d_torexe-actual_date, "/scmtms/d_torstp-appointment_end, arrival date f old
+               TMDocs type c length 255, "/scmtms/d_torrot-tor_id,
+               Deliveries type c length 255,
+               MTR type c length 255, "/scmtms/d_torrot-mtr,
+               Amount type /scmtms/d_tcditm-amount,
+               CurrCode type /scmtms/d_tcditm-currcode016,
+               Carrier type c length 255, "/scmtms/d_torrot-tspid,
+               end of ts_purchase.
+
+         "structure for stock transfer select query
+         types: begin of ts_stock,
+               PurchaseId type ekko-ebeln,
+               GrossWeight type vbap-brgew,
+               GrossWeightUnit type vbap-meins,
+               GrossVolume type vbap-volum,
+               GrossVolumeUnit type vbap-voleh,
+               PurchaseOrg type ekko-ekorg,
+               DepartureDateF type /scmtms/d_torexe-actual_date, "/scmtms/d_torstp-appointment_end, arrival date f old
+               TMDocs type c length 255, "/scmtms/d_torrot-tor_id,
+               Deliveries type c length 255,
+               MTR type c length 255, "/scmtms/d_torrot-mtr,
+               Amount type /scmtms/d_tcditm-amount,
+               CurrCode type /scmtms/d_tcditm-currcode016,
+               Carrier type c length 255, "/scmtms/d_torrot-tspid,
+               end of ts_stock.
+
+        "internal tables for select query
+        data lt_sales type standard table of ts_sales.
+        data lt_purchase type standard table of ts_purchase.
+        data lt_stock type standard table of ts_stock.
+
+        "structure of alv report sales
+         types: begin of ts_sales_report,
+               SalesId type vbak-vbeln,
+               GrossWeight type string,
+               GrossVolume type string,
+               SalesOrg type vbak-vkorg,
+               DepartureDateF type string, "/scmtms/d_torstp-appointment_start,
+               TMDocs type string,
+               Deliveries type string,
+               MTR type string,
+               Amount type string,
+               Carrier type string,
+               end of ts_sales_report.
+         data: lt_sales_report type standard table of ts_sales_report,
+               lv_sales_report like line of lt_sales_report.
+
+         "structure of alv report purchase
+         types: begin of ts_purchase_report,
+               PurchaseId type ekko-ebeln,
+               GrossWeight type string,
+               GrossVolume type string,
+               PurchaseOrg type ekko-ekorg,
+               ArrivalDate type string, "/scmtms/d_torstp-appointment_start, arrival date f old
+               TMDocs type string,
+               Deliveries type string,
+               MTR type string,
+               Amount type string,
+               Carrier type string,
+               end of ts_purchase_report.
+         data: lt_purchase_report type standard table of ts_purchase_report,
+               lv_purchase_report like line of lt_purchase_report.
+
+         "structure of alv report stock
+         types: begin of ts_stock_report,
+               PurchaseId type ekko-ebeln,
+               GrossWeight type string,
+               GrossVolume type string,
+               PurchaseOrg type ekko-ekorg,
+               DepartureDateF type string, "/scmtms/d_torstp-appointment_start,
+               TMDocs type string,
+               Deliveries type string,
+               MTR type string,
+               Amount type string,
+               Carrier type string,
+               end of ts_stock_report.
+         data: lt_stock_report type standard table of ts_stock_report,
+               lv_stock_report like line of lt_stock_report.
+
+        "var for concat
+         data: lv_tmdocument type string,
+               lv_tmdocument_str type string,
+               lv_deliveries type string,
+               lv_deliveries_str type string,
+               lv_mtr type string,
+               lv_mtr_str type string,
+               lv_carrier type string,
+               lv_carrier_str type string,
+
+               lv_grossweight type string,
+               lv_volume type string,
+               lv_amount type string.
+
+
+        "date format declaration
+        data: lv_date type d,
+              lv_time type t,
+              lv_tz type c length 3.
+
+
+endclass.
+
+class lcl_charges_report implementation.
+    method sales.
+    " transfer data to lt_sales_report
+            loop at lt_sales into data(lv_sales).
+               " concatenate two columns
+               lv_grossweight = |{ lv_sales-grossweight } { lv_sales-GrossWeightUnit }|.
+               lv_volume = |{ lv_sales-grossvolume } { lv_sales-GrossVolumeUnit }|.
+               lv_amount = |{ lv_sales-amount currency = 'PHP' } { lv_sales-currcode }|.
+               lv_tmdocument = lv_sales-tmdocs.
+               lv_deliveries = lv_sales-deliveries.
+               lv_mtr = lv_sales-mtr.
+               lv_carrier = lv_sales-carrier.
+
+               "====== remove duplicate of string tmdocument
+               split lv_tmdocument at ',' into table data(lt_tmdocument_s).
+               sort lt_tmdocument_s ascending.
+               delete adjacent duplicates from lt_tmdocument_s.
+
+               loop at lt_tmdocument_s into data(lv_tmdocument_s).
+                concatenate lv_tmdocument_str lv_tmdocument_s into lv_tmdocument_str separated by ','.
+                SHIFT lv_tmdocument_str LEFT  DELETING LEADING ','.
+                lv_sales_report-tmdocs = lv_tmdocument_str.
+               endloop.
+
+               "====== remove duplicate of string deliveries
+               split lv_deliveries at ',' into table data(lt_deliveries_s).
+               sort lt_deliveries_s ascending.
+               delete adjacent duplicates from lt_deliveries_s.
+
+               loop at lt_deliveries_s into data(lv_deliveries_s).
+                concatenate lv_deliveries_str lv_deliveries_s into lv_deliveries_str separated by ','.
+                SHIFT lv_deliveries_str LEFT  DELETING LEADING ','.
+                lv_sales_report-deliveries = lv_deliveries_str.
+               endloop.
+
+               "====== remove duplicate of string mtr
+               split lv_mtr at '/' into table data(lt_mtr_s).
+               sort lt_mtr_s ascending.
+               delete adjacent duplicates from lt_mtr_s.
+
+               loop at lt_mtr_s into data(lv_mtr_s).
+                concatenate lv_mtr_str lv_mtr_s into lv_mtr_str separated by '/'.
+                SHIFT lv_mtr_str LEFT  DELETING LEADING '/'.
+                lv_sales_report-mtr = lv_mtr_str.
+               endloop.
+
+               "====== remove duplicate of string carrier
+               split lv_carrier at ',' into table data(lt_carrier_s).
+               sort lt_carrier_s ascending.
+               delete adjacent duplicates from lt_carrier_s.
+
+               loop at lt_carrier_s into data(lv_carrier_s).
+                concatenate lv_carrier_str lv_carrier_s into lv_carrier_str separated by ','.
+                SHIFT lv_carrier_str LEFT  DELETING LEADING ','.
+                lv_sales_report-carrier = lv_carrier_str.
+               endloop.
+
+               lv_sales_report-salesid =  lv_sales-SalesId.
+               lv_sales_report-grossweight = lv_grossweight.
+               lv_sales_report-grossvolume = lv_volume.
+               lv_sales_report-salesorg = lv_sales-SalesOrg.
+               lv_sales_report-departuredatef = lv_sales-departuredatef.
+
+
+               " date format timestamp to date time ISO
+                lv_tz = 'UTC'.
+                if lv_sales-departuredatef is not initial or lv_sales-departuredatef <> 0.
+                    CONVERT TIME STAMP lv_sales-departuredatef TIME ZONE lv_tz
+                    INTO DATE lv_date TIME lv_time.
+                    lv_sales_report-departuredatef =  |{ lv_date DATE = ISO } { lv_time TIME = ISO }| .
+                endif.
+
+               lv_sales_report-amount = lv_amount.
+
+               append lv_sales_report to lt_sales_report.
+
+               clear: lt_tmdocument_s ,lv_tmdocument_str.
+               clear: lt_deliveries_s ,lv_deliveries_str.
+               clear: lt_mtr_s ,lv_mtr_str.
+               clear: lt_carrier_s ,lv_carrier_str.
+            endloop.
+
+            cl_salv_table=>factory(
+              IMPORTING
+                r_salv_table   = lo_table
+              CHANGING
+                t_table        = lt_sales_report
+            ).
+
+            call method fcat(  ).
+    endmethod.
+    method stock_transfer.
+    "transfer lt_stock to lt_stock_report
+          loop at lt_stock into data(lv_stock).
+          " concatenate two columns
+               lv_grossweight = |{ lv_stock-grossweight } { lv_stock-GrossWeightUnit }|.
+               lv_volume = |{ lv_stock-grossvolume } { lv_stock-GrossVolumeUnit }|.
+               lv_amount = |{ lv_stock-amount currency = 'PHP' } { lv_stock-currcode }|.
+               lv_tmdocument = lv_stock-tmdocs.
+               lv_deliveries = lv_stock-deliveries.
+               lv_mtr = lv_stock-mtr.
+               lv_carrier = lv_stock-carrier.
+
+               "====== remove duplicate of string tmdocument
+               split lv_tmdocument at ',' into table data(lt_tmdocument_t).
+               sort lt_tmdocument_t ascending.
+               delete adjacent duplicates from lt_tmdocument_t.
+
+               loop at lt_tmdocument_t into data(lv_tmdocument_t).
+                concatenate lv_tmdocument_str lv_tmdocument_t into lv_tmdocument_str separated by ','.
+                SHIFT lv_tmdocument_str LEFT  DELETING LEADING ','.
+                lv_stock_report-tmdocs = lv_tmdocument_str.
+               endloop.
+
+               "====== remove duplicate of string deliveries
+               split lv_deliveries at ',' into table data(lt_deliveries_t).
+               sort lt_deliveries_t ascending.
+               delete adjacent duplicates from lt_deliveries_t.
+
+               loop at lt_deliveries_t into data(lv_deliveries_t).
+                concatenate lv_deliveries_str lv_deliveries_t into lv_deliveries_str separated by ','.
+                SHIFT lv_deliveries_str LEFT  DELETING LEADING ','.
+                lv_stock_report-deliveries = lv_deliveries_str.
+               endloop.
+
+               "====== remove duplicate of string mtr
+               split lv_mtr at '/' into table data(lt_mtr_t).
+               sort lt_mtr_t ascending.
+               delete adjacent duplicates from lt_mtr_t.
+
+               loop at lt_mtr_t into data(lv_mtr_t).
+                concatenate lv_mtr_str lv_mtr_t into lv_mtr_str separated by '/'.
+                SHIFT lv_mtr_str LEFT  DELETING LEADING '/'.
+                lv_stock_report-mtr = lv_mtr_str.
+               endloop.
+
+               "====== remove duplicate of string carrier
+               split lv_carrier at ',' into table data(lt_carrier_t).
+               sort lt_carrier_t ascending.
+               delete adjacent duplicates from lt_carrier_t.
+
+               loop at lt_carrier_t into data(lv_carrier_t).
+                concatenate lv_carrier_str lv_carrier_t into lv_carrier_str separated by ','.
+                SHIFT lv_carrier_str LEFT  DELETING LEADING ','.
+                lv_stock_report-carrier = lv_carrier_str.
+               endloop.
+
+               lv_stock_report-purchaseid =  lv_stock-purchaseid.
+               lv_stock_report-grossweight = lv_grossweight.
+               lv_stock_report-grossvolume = lv_volume.
+               lv_stock_report-purchaseorg = lv_stock-purchaseorg.
+               lv_stock_report-departuredatef = lv_stock-departuredatef.
+
+
+               " date format timestamp to date time ISO
+                lv_tz = 'UTC'.
+                if lv_stock-departuredatef is not initial or lv_stock-departuredatef <> 0.
+                    CONVERT TIME STAMP lv_stock-departuredatef TIME ZONE lv_tz
+                    INTO DATE lv_date TIME lv_time.
+                    lv_stock_report-departuredatef =  |{ lv_date DATE = ISO } { lv_time TIME = ISO }| .
+                endif.
+
+
+               lv_stock_report-amount = lv_amount.
+
+               append lv_stock_report to lt_stock_report.
+
+               clear: lt_tmdocument_t ,lv_tmdocument_str.
+               clear: lt_deliveries_t ,lv_deliveries_str.
+               clear: lt_mtr_t ,lv_mtr_str.
+               clear: lt_carrier_t ,lv_carrier_str.
+            endloop.
+
+            cl_salv_table=>factory(
+              IMPORTING
+                r_salv_table   = lo_table
+              CHANGING
+                t_table        = lt_stock_report
+            ).
+
+            call method fcat(  ).
+    endmethod.
+    method purchase.
+        " transfer lt_purchase to lt_purchase_report
+            loop at lt_purchase into data(lv_purchase).
+            " concatenate two columns
+               lv_grossweight = |{ lv_purchase-grossweight } { lv_purchase-GrossWeightUnit }|.
+               lv_volume = |{ lv_purchase-grossvolume } { lv_purchase-grossvolumeunit }|.
+               lv_amount = |{ lv_purchase-amount currency = 'PHP' } { lv_purchase-currcode }|.
+               lv_tmdocument = lv_purchase-tmdocs.
+               lv_deliveries = lv_purchase-deliveries.
+               lv_mtr = lv_purchase-mtr.
+               lv_carrier = lv_purchase-carrier.
+
+               "====== remove duplicate of string tmdocument
+               split lv_tmdocument at ',' into table data(lt_tmdocument_p).
+               sort lt_tmdocument_p ascending.
+               delete adjacent duplicates from lt_tmdocument_p.
+
+               loop at lt_tmdocument_p into data(lv_tmdocument_p).
+                concatenate lv_tmdocument_str lv_tmdocument_p into lv_tmdocument_str separated by ','.
+                SHIFT lv_tmdocument_str LEFT  DELETING LEADING ','.
+                lv_purchase_report-tmdocs = lv_tmdocument_str.
+
+               endloop.
+
+               "====== remove duplicate of string deliveries
+               split lv_deliveries at ',' into table data(lt_deliveries_p).
+               sort lt_deliveries_p ascending.
+               delete adjacent duplicates from lt_deliveries_p.
+
+               loop at lt_deliveries_p into data(lv_deliveries_p).
+                concatenate lv_deliveries_str lv_deliveries_p into lv_deliveries_str separated by ','.
+                SHIFT lv_deliveries_str LEFT  DELETING LEADING ','.
+                lv_purchase_report-deliveries = lv_deliveries_str.
+               endloop.
+
+               "====== remove duplicate of string mtr
+               split lv_mtr at '/' into table data(lt_mtr_p).
+               sort lt_mtr_p ascending.
+               delete adjacent duplicates from lt_mtr_p.
+
+               loop at lt_mtr_p into data(lv_mtr_p).
+                concatenate lv_mtr_str lv_mtr_p into lv_mtr_str separated by '/'.
+                SHIFT lv_mtr_str LEFT  DELETING LEADING '/'.
+                lv_purchase_report-mtr = lv_mtr_str.
+               endloop.
+
+               "====== remove duplicate of string carrier
+               split lv_carrier at ',' into table data(lt_carrier_p).
+               sort lt_carrier_p ascending.
+               delete adjacent duplicates from lt_carrier_p.
+
+               loop at lt_carrier_p into data(lv_carrier_p).
+                concatenate lv_carrier_str lv_carrier_p into lv_carrier_str separated by ','.
+                SHIFT lv_carrier_str LEFT  DELETING LEADING ','.
+                lv_purchase_report-carrier = lv_carrier_str.
+               endloop.
+
+               lv_purchase_report-PurchaseId =  lv_purchase-PurchaseId.
+               lv_purchase_report-grossweight = lv_grossweight.
+               lv_purchase_report-grossvolume = lv_volume.
+               lv_purchase_report-PurchaseOrg = lv_purchase-purchaseorg.
+               lv_purchase_report-arrivaldate = lv_purchase-arrivaldate.
+
+               " date format timestamp to date time ISO
+                lv_tz = 'UTC'.
+                if lv_purchase-arrivaldate is not initial or lv_purchase-arrivaldate <> 0.
+                    CONVERT TIME STAMP lv_purchase-arrivaldate TIME ZONE lv_tz
+                    INTO DATE lv_date TIME lv_time.
+                    lv_purchase_report-arrivaldate =  |{ lv_date DATE = ISO } { lv_time TIME = ISO }| .
+                endif.
+
+               lv_purchase_report-amount = lv_amount.
+
+               append lv_purchase_report to lt_purchase_report.
+
+               clear: lt_tmdocument_p ,lv_tmdocument_str.
+               clear: lt_deliveries_p ,lv_deliveries_str.
+               clear: lt_mtr_p ,lv_mtr_str.
+               clear: lt_carrier_p ,lv_carrier_str.
+            endloop.
+
+            cl_salv_table=>factory(
+              IMPORTING
+                r_salv_table   = lo_table
+              CHANGING
+                t_table        = lt_purchase_report
+            ).
+
+
+            call method fcat(  ).
+    endmethod.
+    method get_data.
+      "Sales
+       if r_sales = 'X'.
+       if p_ccodev is initial or p_slsorg is initial.
+         message text-E03 type 'I' display like 'E'.
+        leave list-processing.
+       else.
+            select
+                SalesID,
+                sum( GrossWeight ) as GrossWeight,
+                GrossWeightUnit,
+                sum( GrossVolume ) as GrossVolume,
+                GrossVolumeUnit,
+                SalesOrg,
+                DepartureDateF as DepartureDateF ,
+                string_agg( TMDocs,',' ) as TMDocs ,
+                string_agg( Deliveries,',' ) as Deliveries,
+                string_agg( MTR,'/' ) as MTR,
+                sum( Amount ) as Amount,
+                min( currcode016 ) as CurrCode,
+                string_agg( Carrier,',' ) as Carrier
+                from ZTM01_SALES_TM
+                where
+                     ( vbakCompanyCode = @p_ccodev )
+                and  ( salesorg = @p_slsorg )
+                and  ( log_locidf in @s_sloc or SalesSource in @s_sloc )
+                and  ( log_locidl in @s_dloc or SalesDestination in @s_sloc )
+                and  ( departuredatef in @s_depart )
+            group by salesid,grossweightunit,grossvolumeunit, SalesOrg, DepartureDateF
+            order by salesid ascending
+            into table @lt_sales .
+
+            delete adjacent duplicates from lt_sales.
+
+            call method sales.
+       endif.
+       endif.
+      "Transfer Stock
+       if r_stock = 'X'.
+       if p_ccodet is initial or p_stoorg is initial.
+          message text-E04 type 'I' display like 'E'.
+          leave list-processing.
+       else.
+*            select
+*                SalesID,
+*                sum( GrossWeight ) as GrossWeight,
+*                GrossWeightUnit,
+*                sum( GrossVolume ) as GrossVolume,
+*                GrossVolumeUnit,
+*                SalesOrg,
+*                min( DepartureDateF ) as DepartureDateF ,
+*                string_agg( TMDocs,',' ) as TMDocs ,
+*                string_agg( Deliveries,',' ) as Deliveries,
+*                string_agg( MTR,'/' ) as MTR,
+*                sum( Amount ) as Amount,
+*                min( currcode016 ) as CurrCode,
+*                string_agg( Carrier,',' ) as Carrier
+*                from ZTM01_SALES
+*                where
+*                    vbakCompanyCode = @p_ccodev
+*                and salesorg = @p_slsorg
+*                and log_locidf in @s_sloc or SalesSource in @s_sloc
+*                and log_locidl in @s_dloc or SalesDestination in @s_sloc
+*                and departuredatef in @s_depart
+*            group by salesid,grossweightunit,grossvolumeunit, SalesOrg, DepartureDateF
+*            order by salesid ascending
+*            into table @lt_sales .
+
+            select distinct
+                PurchaseID,
+                sum( ekGrossWeight ) as GrossWeight,
+                ekGrossWeightUnit,
+                sum( ekGrossVolume ) as GrossVolume,
+                ekvolumunit,
+                PurchaseOrg,
+                DepartureDateF as DepartureDateF,
+                string_agg( TMDocs,',' ) as TMDocs,
+                string_agg( Deliveries,',' ) as Deliveries,
+                string_agg( MTR,'/' ) as MTR,
+                sum( Amount ) as Amount,
+                min( currcode016 ) as CurrCode,
+                string_agg( Carrier,',' ) as Carrier
+                from ZTM01_PURCHASE
+                where
+                    ( ekkoCompanyCode = @p_ccodet )
+                and ( purchaseorg = @p_stoorg )
+                and ( log_locidf in @s_sloc or PurchaseSource in @s_sloc )
+                and ( log_locidl in @s_dloc )
+                and ( arrivaldate in @s_depSTO )
+                and ( bsart_doctype = 'ZSTO' or bsart_doctype = 'ZST3' or bsart_doctype = 'ZST4')
+            group by purchaseid, ekgrossweightunit, ekvolumunit, PurchaseOrg, DepartureDateF
+            order by purchaseid ascending
+            into table @lt_stock.
+
+            delete adjacent duplicates from lt_stock.
+
+            call method stock_transfer.
+       endif.
+       endif.
+       " Procurement
+       if r_purch = 'X'.
+        if p_ccodep is initial or p_prcorg is initial.
+           message text-E04 type 'I' display like 'E'.
+           leave list-processing.
+        else.
+            select distinct
+                PurchaseID,
+                sum( ekGrossWeight ) as GrossWeight,
+                ekGrossWeightUnit,
+                sum( ekGrossVolume ) as GrossVolume,
+                ekvolumunit,
+                PurchaseOrg,
+                ArrivalDate as ArrivalDate,
+                string_agg( TMDocs,',' ) as TMDocs,
+                string_agg( Deliveries,',' ) as Deliveries,
+                string_agg( MTR,'/' ) as MTR,
+                sum( Amount ) as Amount,
+                min( currcode016 ) as CurrCode,
+                string_agg( Carrier,',' ) as Carrier
+                from ZTM01_PURCHASE
+                where
+                     ( ekkoCompanyCode = @p_ccodep )
+                and  ( purchaseorg = @p_prcorg )
+                and  ( log_locidf in @s_sloc or PurchaseSource in @s_sloc )
+                and  ( log_locidl in @s_dloc )
+                and  ( arrivaldate in @s_arrive )
+                and  ( bsart_doctype <> 'ZSTO' and bsart_doctype <> 'ZST3' and bsart_doctype <> 'ZST4')
+            group by purchaseid, ekgrossweightunit, ekvolumunit, PurchaseOrg, ArrivalDate
+            order by purchaseid ascending
+            into table @lt_purchase.
+
+            delete adjacent duplicates from lt_purchase.
+
+            call method purchase.
+
+        endif.
+        endif.
+
+           lo_colt->set_optimize( abap_true ).
+           lo_salv_functions = lo_table->get_functions(  ).
+           lo_salv_functions->set_all(  ).
+           lo_table->display(  ).
+     endmethod.
+    method fcat .
+            lo_colt = lo_table->get_columns(  ).
+
+            if r_sales = 'X'.
+                lo_col = lo_colt->get_column( columnname = 'SALESID' ).
+                lo_col->set_long_text( value = 'Sales Order' ).
+                lo_col->set_medium_text( value = 'Sales Order' ).
+                lo_col->set_short_text( value = 'Sales' ).
+            elseif r_stock = 'X'.
+                lo_col = lo_colt->get_column( columnname = 'PURCHASEID' ).
+                lo_col->set_long_text( value = 'Stock Transfer' ).
+                lo_col->set_medium_text( value = 'Stock Transfer' ).
+                lo_col->set_short_text( value = 'StockTra..' ).
+            elseif r_purch = 'X'.
+                lo_col = lo_colt->get_column( columnname = 'PURCHASEID' ).
+                lo_col->set_long_text( value = 'Purchase Order' ).
+                lo_col->set_medium_text( value = 'Purchase Order' ).
+                lo_col->set_short_text( value = 'Purchase' ).
+            endif.
+
+            lo_col = lo_colt->get_column( columnname = 'GROSSWEIGHT' ).
+            lo_col->set_long_text( value = 'Gross Weight' ).
+            lo_col->set_medium_text( value = 'Gross Weight' ).
+            lo_col->set_short_text( value = 'Weight' ).
+
+            lo_col = lo_colt->get_column( columnname = 'GROSSVOLUME' ).
+            lo_col->set_long_text( value = 'Gross Volume' ).
+            lo_col->set_medium_text( value = 'Gross Volume' ).
+            lo_col->set_short_text( value = 'Volume' ).
+
+            if r_sales = 'X'.
+                lo_col = lo_colt->get_column( columnname = 'SALESORG' ).
+                lo_col->set_long_text( value = 'Sales Org ID' ).
+                lo_col->set_medium_text( value = 'Sales Org ID' ).
+                lo_col->set_short_text( value = 'Org ID' ).
+            elseif r_purch = 'X'.
+                lo_col = lo_colt->get_column( columnname = 'PURCHASEORG' ).
+                lo_col->set_long_text( value = 'Purchase Org' ).
+                lo_col->set_medium_text( value = 'Purchase Org' ).
+                lo_col->set_short_text( value = 'Purch Org' ).
+            elseif r_stock = 'X'.
+                lo_col = lo_colt->get_column( columnname = 'PURCHASEORG' ).
+                lo_col->set_long_text( value = 'Purchase Org' ).
+                lo_col->set_medium_text( value = 'Purchase Org' ).
+                lo_col->set_short_text( value = 'Purch Org' ).
+            endif.
+
+            if r_sales = 'X'.
+                lo_col = lo_colt->get_column( columnname = 'DEPARTUREDATEF' ).
+                lo_col->set_long_text( value = 'Departure Date' ).
+                lo_col->set_medium_text( value = 'Departure Date' ).
+                lo_col->set_short_text( value = 'Dprt Date' ).
+            elseif r_purch = 'X'.
+                lo_col = lo_colt->get_column( columnname = 'ARRIVALDATE' ).
+                lo_col->set_long_text( value = 'Arrival Date' ).
+                lo_col->set_medium_text( value = 'Arrival Date' ).
+                lo_col->set_short_text( value = 'Arriv Date' ).
+            elseif r_stock = 'X'.
+                lo_col = lo_colt->get_column( columnname = 'DEPARTUREDATEF' ).
+                lo_col->set_long_text( value = 'Departure Date' ).
+                lo_col->set_medium_text( value = 'Departure Date' ).
+                lo_col->set_short_text( value = 'Dprt Date' ).
+            endif.
+
+            lo_col = lo_colt->get_column( columnname = 'TMDOCS' ).
+            lo_col->set_long_text( value = 'TM Documents' ).
+            lo_col->set_medium_text( value = 'TM Documents' ).
+            lo_col->set_short_text( value = 'TM Docs' ).
+
+            lo_col = lo_colt->get_column( columnname = 'DELIVERIES' ).
+            lo_col->set_long_text( value = 'Deliveries' ).
+            lo_col->set_medium_text( value = 'Deliveries' ).
+            lo_col->set_short_text( value = 'Deliveries' ).
+
+            lo_col = lo_colt->get_column( columnname = 'MTR' ).
+            lo_col->set_long_text( value = 'Means of Transport' ).
+            lo_col->set_medium_text( value = 'Means of Transport' ).
+            lo_col->set_short_text( value = 'MTR' ).
+
+            lo_col = lo_colt->get_column( columnname = 'AMOUNT' ).
+            lo_col->set_long_text( value = 'Total Freight Cost' ).
+            lo_col->set_medium_text( value = 'Total Freight Cost' ).
+            lo_col->set_short_text( value = 'Total Cost' ).
+
+            lo_col = lo_colt->get_column( columnname = 'CARRIER' ).
+            lo_col->set_long_text( value = 'Carrier' ).
+            lo_col->set_medium_text( value = 'Carrier' ).
+            lo_col->set_short_text( value = 'Carrier' ).
+    endmethod.
+
+
+"validate date if date is higher than 30 days
+    method validate_date.
+        data: lv_date_low type syst_datlo.
+        data: lv_date_high type syst_datlo.
+
+        call function 'IB_CONVERT_FROM_TIMESTAMP'
+          EXPORTING
+            i_timestamp = s_depart-low
+            i_tzone     = SY-ZONLO
+          IMPORTING
+            e_datlo     = lv_date_low
+          .
+
+        call function 'IB_CONVERT_FROM_TIMESTAMP'
+          EXPORTING
+            i_timestamp = s_depart-high
+            i_tzone     = SY-ZONLO
+          IMPORTING
+            e_datlo     = lv_date_high
+          .
+
+          data(lv_validate) = lv_date_high - lv_date_low.
+
+          if lv_validate > 30.
+            Message text-E02 type 'E' display like 'I'.
+          endif.
+    endmethod.
+
+    method show_hide.
+         loop at screen.
+            if ( screen-group1 =  'SC1' or screen-group1 = 'SC3' ) and r_purch eq 'X'. "if screen-group1 = 'SC1' and r_purch eq 'X'.
+                screen-active = '0'.
+              clear  p_ccodev.
+              clear p_slsorg.
+*                s_depart-low = ''.
+*                s_depart-high = ''.
+*                s_depart = ''.
+
+                "clear sto field
+              clear  p_ccodet.
+              clear  p_stoorg.
+*                s_depSTO-low = ''.
+*                s_depSTO-high = ''.
+
+
+                modify screen.
+                continue.
+            elseif ( screen-group1 = 'SC2' or screen-group1 = 'SC3') and r_sales eq 'X' . " elseif screen-group1 = 'SC2' and r_sales eq 'X' .
+                screen-active = '0'.
+               clear p_ccodep.
+               clear p_prcorg.
+*                s_arrive-low = ''.
+*                s_arrive-high = ''.
+
+                "clear sto field
+               clear p_ccodet.
+               clear p_stoorg.
+*                s_depSTO-low = ''.
+*                s_depSTO-high = ''.
+
+
+                modify screen.
+                continue.
+
+            elseif ( screen-group1 = 'SC1' or screen-group1 = 'SC2' ) and r_stock eq 'X'. "elseif screen-group1 = 'SC2' and r_stock eq 'X'.
+                screen-active = '0'.
+                clear p_ccodep.
+                clear p_prcorg.
+*                s_arrive-low = ''.
+*                s_arrive-high = ''.
+
+                "clear sales field
+                clear p_ccodev.
+                clear p_slsorg.
+*                s_depart-low = ''.
+*                s_depart-high = ''.
+
+                modify screen.
+                continue.
+            endif.
+
+            if screen-name = 'P_CCODEV' or screen-name = 'P_SLSORG'.
+                screen-required = 2.
+                modify screen.
+            endif.
+            if screen-name = 'P_CCODEP' or screen-name = 'P_PRCORG'.
+                screen-required = 2.
+                modify screen.
+            endif.
+            if screen-name = 'P_CCODET' or screen-name = 'P_STOORG'.
+                screen-required = 2.
+                modify screen.
+            endif.
+        endloop.
+    endmethod.
+endclass.
