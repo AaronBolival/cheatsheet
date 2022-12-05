@@ -1,0 +1,120 @@
+REPORT ZAJ_TEST_EMAIL.
+
+class lcl_send_email_cls definition.
+  public section.
+
+  data : lc_subject type so_obj_des value 'Email using CL_BCS_CLASS',
+         lc_html type so_obj_tp value 'HTML'.
+
+  data : lv_mlrec        type so_obj_nam,
+         lv_sent_to_all  type os_boolean,
+         lv_email        type adr6-smtp_addr,  "Email Address coming from ADR6 table
+         lv_subject      type so_obj_des,      "Short description of contents
+         lt_html_string         type bcsy_text.       "html texts
+  data :
+         lr_send_request  type ref to cl_bcs,
+         lr_bcs_exception type ref to cx_bcs,
+         lr_recipient     type ref to if_recipient_bcs,
+         lr_sender        type ref to cl_sapuser_bcs,
+         lr_document      type ref to cl_document_bcs.
+
+  methods: send_email.
+endclass.
+class lcl_send_email_cls implementation.
+  method send_email.
+    try.
+      "Create send request
+      lr_send_request = cl_bcs=>create_persistent( ).  "CL_BCS Business Communication Service  for email
+
+      "Email from
+      lr_sender = cl_sapuser_bcs=>create( sy-uname ).   "cl_sapuser_bcs = represents as sap user
+
+      "Add sender to send request
+      call method lr_send_request->set_sender
+        EXPORTING
+          i_sender =     lr_sender
+        .
+*        CATCH cx_send_req_bcs.    " BCS: Send Request Exceptions
+
+      "Email to
+      lv_email = 'aaronjohn.bolival@dxc.com'.
+      lr_recipient = cl_cam_address_bcs=>create_internet_address(   "cl_cam_address_bcs = BCS: Represents a BAS Address
+          i_address_string = lv_email
+*          i_address_name   =
+*          i_incl_sapuser   =
+      ).
+*        CATCH cx_address_bcs.  " BCS: Address Exceptions
+
+      "Add recipient to send request
+      call method lr_send_request->add_recipient
+        exporting
+          i_recipient = lr_recipient
+          i_express   = 'X'.
+
+      "Email Body
+      data: lv_top type string,
+            lv_mid type string,
+            lv_bot type string.
+
+      types: begin of ts_indx,
+             relid type relid,
+             mandt type sy-mandt,
+             end of ts_indx.
+             data: lt_indx type standard table of indx,
+                   lv_indx like line of lt_indx.
+      select relid mandt from indx into table lt_indx up to 3 rows.
+
+      lv_top = '<hmtl><body><table border="1">'.
+      append lv_top to lt_html_string.
+      loop at lt_indx into lv_indx.
+          lv_mid = |<tr><td>{ lv_indx-relid }</td><td>{ lv_indx-mandt }</td></tr>|.
+          append lv_mid to lt_html_string.
+      endloop.
+      lv_bot = '</table></body></html>'.
+       append lv_bot to lt_html_string.
+
+      lr_document = cl_document_bcs=>create_document(
+          i_type         = lc_html
+          i_subject      = lc_subject
+          i_text         = lt_html_string
+      ).
+*        CATCH cx_document_bcs.  " BCS: Document Exceptions
+
+
+      "Add document to send request
+      lr_send_request->set_document( i_document = lr_document ).
+*        CATCH cx_send_req_bcs.    " BCS: Send Request Exceptions
+
+      "Send Email
+      call method lr_send_request->send
+        EXPORTING
+          i_with_error_screen = 'X'   " Transmission Log Book if Errors Occur
+        RECEIVING
+          result              = lv_sent_to_all    " Flag Indicates Whether Document Was Sent Successfully
+        .
+*        CATCH cx_send_req_bcs.    " BCS: Send Request Exceptions
+
+
+      if lv_sent_to_all = 'X'.
+        write: 'Email sent successfully'.
+      endif.
+      commit work.
+
+
+
+   CATCH cx_bcs INTO lr_bcs_exception.
+    WRITE:
+      'Error!',
+      'Error type:',
+      lr_bcs_exception->error_type.
+    endtry.
+  endmethod.
+endclass.
+
+start-of-selection.
+
+
+
+data: lo_class type ref to lcl_send_email_cls.
+create object lo_class.
+lo_class->send_email( ).
