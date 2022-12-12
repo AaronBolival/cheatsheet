@@ -1,0 +1,24 @@
+REPORT ztest2.
+
+data a type string.
+
+a = 'Aaron'.
+
+
+
+export a = a to database indx(ab) id 'ZAARON'.
+
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+
+REPORT ZTEST_2_AJ.
+DATA: a  type string.
+
+import a = a from database indx(ab) id 'ZAARON'.
+
+start-of-selection.
+
+write: a.
+
+delete from database indx(zr) id 'ZAARON'.
