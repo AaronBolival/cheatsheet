@@ -1,5 +1,7 @@
 REPORT ZAJ_TEST_EMAIL.
 
+"SOOS Table = Email recipient
+
 class lcl_send_email_cls definition.
   public section.
 
