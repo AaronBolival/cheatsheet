@@ -1,0 +1,139 @@
+*&---------------------------------------------------------------------*
+*& Report ZTEST_2_AJ
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT ZTEST_2_AJ.
+
+data: lv_in_string type string value 'Hello World',
+      lv_in_stringint type string value '1',
+      lv_in_int type i value 25.
+
+select carrid from scarr into table @data(lt_scarr).
+data: lv_str_table type string_table.
+append 'AA' to lv_str_table.
+append 'AB' to lv_str_table.
+append 'AC' to lv_str_table.
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"STRING to Integer | Result is string 1 to int 1
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+data: lv_out_i_fm type i.
+call function 'CONVERT_STRING_TO_INTEGER'
+  EXPORTING
+    p_string      = lv_in_stringint
+  IMPORTING
+    p_int         = lv_out_i_fm
+*  EXCEPTIONS
+*    overflow      = 1
+*    invalid_chars = 2
+*    others        = 3
+  .
+
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"STRING to XSTRING | Result is 1DE965A16A2B95
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+data:lv_out_xstring type xstring."or string
+
+/ui2/cl_json=>string_to_xstring(
+  EXPORTING
+    in  = lv_in_string
+  CHANGING
+    out = lv_out_xstring
+).
+
+
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"STRING to RAW | Result is 48656C6C6F20576F726C64
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+data: lv_out_raw type xstring.
+/ui2/cl_json=>string_to_raw(
+  EXPORTING
+    iv_string   = lv_in_string
+*    iv_encoding =
+  RECEIVING
+    rv_xstring  = lv_out_raw
+).
+
+
+data: lv_out_raw2 type xstring.
+call function 'SCMS_STRING_TO_XSTRING'
+  EXPORTING
+    text     = lv_in_string
+    mimetype = space
+  IMPORTING
+    buffer   = lv_out_raw2
+  .
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"XSTRING to STRING | Result is Hello World
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+data lv_out_string type string.
+cl_bcs_convert=>xstring_to_string(
+  EXPORTING
+    iv_xstr   = lv_out_raw2
+    iv_cp     = 1100
+  RECEIVING
+    rv_string = lv_out_string
+).
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"Table to String | Result is AA BB CC etc.
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+data: lv_table_string  type string.
+
+call function 'SOTR_SERV_TABLE_TO_STRING'
+*  EXPORTING
+*    flag_no_line_breaks = 'X'
+*    line_length         =
+*    langu               = SY-LANGU
+  IMPORTING
+    text                = lv_table_string
+  TABLES
+    text_tab            = lt_scarr
+  .
+
+
+call function 'CONVERT_TABLE_TO_STRING'
+  EXPORTING
+    i_tabline_length = lines( lv_str_table )
+  IMPORTING
+    e_string         = lv_table_string
+  TABLES
+    it_table         = lv_str_table
+  .
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"XString to Binary | Result is
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+data: lt_binary type standard table of raw255.
+
+call function 'SCMS_XSTRING_TO_BINARY'
+  EXPORTING
+    buffer          = lv_out_raw2
+*    append_to_table = space
+*  IMPORTING
+*    output_length   =
+  TABLES
+    binary_tab      = lt_binary
+  .
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"String to solix/Binary | Result is
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+cl_bcs_convert=>string_to_solix(
+  EXPORTING
+    iv_string   = lv_in_string
+*    iv_codepage =
+*    iv_add_bom  =
+  IMPORTING
+    et_solix    = data(lt_str_to_solix)
+*    ev_size     =
+).
+*CATCH cx_bcs.
