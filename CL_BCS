@@ -1,6 +1,9 @@
+*&---------------------------------------------------------------------*
+*& Report ZAJ_TEST_EMAIL
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
 REPORT ZAJ_TEST_EMAIL.
-
-"SOOS Table = Email recipient
 
 class lcl_send_email_cls definition.
   public section.
@@ -25,6 +28,111 @@ endclass.
 class lcl_send_email_cls implementation.
   method send_email.
     try.
+ """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+ "Start of Smartform
+ """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+         "Attachment smartform declaration
+         data: lv_fname       type rs38l_fnam,
+               lv_binfilesize type so_obj_len,
+               lv_file        type xstring.
+
+         DATA: it_otfdata    TYPE ssfcrescl,
+               it_otf        TYPE standard TABLE OF itcoo,
+               it_lines      TYPE standard TABLE OF tline,
+               it_binary_tab TYPE solix_tab.
+
+         DATA: l_devtype TYPE rspoptype.
+
+         DATA: ls_ctrlop TYPE ssfctrlop,
+               ls_outopt TYPE ssfcompop.
+
+               ls_ctrlop-getotf    = 'X'.
+               ls_ctrlop-no_dialog = 'X'.
+               ls_ctrlop-preview   = space.
+
+       "Output Options
+               ls_outopt-tdnoprev  = 'X'.
+               ls_outopt-tddest    = 'LP01'."LOCL
+               ls_outopt-tdnoprint = 'X'.
+
+
+      "Smartform
+      select * from sflight into table @data(lt_sflight) up to 5 rows.
+      call function 'SSF_FUNCTION_MODULE_NAME'
+        EXPORTING
+          formname           = 'ZAJ_SFORMSIF_TEST'
+*          variant            = space
+*          direct_call        = space
+        IMPORTING
+          fm_name            = lv_fname
+*        EXCEPTIONS
+*          no_form            = 1
+*          no_function_module = 2
+*          others             = 3
+        .
+
+        call function 'SSF_GET_DEVICE_TYPE'
+          EXPORTING
+            i_language             = 'E'
+*            i_application          = 'SAPDEFAULT'
+          IMPORTING
+            e_devtype              = l_devtype
+          .
+
+          ls_outopt-tdprinter = l_devtype.
+
+      call function lv_fname
+        exporting
+            CONTROL_PARAMETERS = ls_ctrlop
+            output_options = ls_outopt
+        importing
+            JOB_OUTPUT_INFO = it_otfdata
+
+        tables
+            flight = lt_sflight
+        .
+
+        it_otf[] = it_otfdata-otfdata[].
+
+        call function 'CONVERT_OTF'
+          EXPORTING
+            format                = 'PDF'
+*            max_linewidth         = 132
+*            archive_index         = space
+*            copynumber            = 0
+*            ascii_bidi_vis2log    = space
+*            pdf_delete_otftab     = space
+*            pdf_username          = space
+*            pdf_preview           = space
+*            use_cascading         = space
+*            modified_param_table  =
+          IMPORTING
+            bin_filesize          = lv_binfilesize
+            bin_file              = lv_file
+          TABLES
+            otf                   = it_otf[]
+            lines                 = it_lines[]
+*          EXCEPTIONS
+*            err_max_linewidth     = 1
+*            err_format            = 2
+*            err_conv_not_possible = 3
+*            err_bad_otf           = 4
+*            others                = 5
+          .
+
+       call function 'SCMS_XSTRING_TO_BINARY'
+         EXPORTING
+           buffer          = lv_file
+*           append_to_table = space
+*         IMPORTING
+*           output_length   =
+         TABLES
+           binary_tab      = it_binary_tab
+         .
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"End of Smartform
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
       "Create send request
       lr_send_request = cl_bcs=>create_persistent( ).  "CL_BCS Business Communication Service  for email
 
@@ -83,6 +191,20 @@ class lcl_send_email_cls implementation.
 *        CATCH cx_document_bcs.  " BCS: Document Exceptions
 
 
+        "Set the attachment
+         call method lr_document->add_attachment
+           EXPORTING
+             i_attachment_type     = 'PDF'
+             i_attachment_subject  = 'Test Email with Attachment'
+             i_attachment_size     = lv_binfilesize
+*             i_attachment_language = space
+*             i_att_content_text    =
+             i_att_content_hex     = it_binary_tab
+*             i_attachment_header   =
+*             iv_vsi_profile        =
+           .
+*         CATCH cx_document_bcs.
+
       "Add document to send request
       lr_send_request->set_document( i_document = lr_document ).
 *        CATCH cx_send_req_bcs.    " BCS: Send Request Exceptions
@@ -95,6 +217,7 @@ class lcl_send_email_cls implementation.
           result              = lv_sent_to_all    " Flag Indicates Whether Document Was Sent Successfully
         .
 *        CATCH cx_send_req_bcs.    " BCS: Send Request Exceptions
+
 
 
       if lv_sent_to_all = 'X'.
