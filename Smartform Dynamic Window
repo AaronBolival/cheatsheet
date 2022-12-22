@@ -1,0 +1,16 @@
+"Global Definition -> Initialization   
+" HEAD_LINE , MAIN , LABEL are window name .
+
+   FIELD-SYMBOLS: <lt_docstruc> TYPE tsfdocstrc,
+                   <ls_docstruc> type line of tsfdocstrc.
+    assign ('%DOCSTRUC') to <lt_docstruc>.
+    loop at <lt_docstruc> assigning <ls_docstruc>.
+      case <ls_docstruc>-tdwindow.
+        when 'HEAD_LINE'.
+          <ls_docstruc>-wtop = '14.77'.
+        when 'MAIN'.
+          <ls_docstruc>-wtop = '15.74'.
+        when 'LABEL'.
+          <ls_docstruc>-wtop = '4.30'.
+      endcase.
+    endloop.
