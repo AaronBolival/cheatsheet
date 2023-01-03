@@ -1,0 +1,61 @@
+FIELD-SYMBOLS: <f_tab> TYPE tsftabdef.
+
+DATA: lv_tabdef  TYPE ssftabdef,  " Work Area for the Table
+      lt_ltypes  TYPE tsfltype,   " Table – Line types
+      lv_ltypes  TYPE ssfltype,   " Work Area for the table
+      lt_ltypesass type TSFLTYPASS,
+      lv_ltypesass type SSFLTYPASS,
+      lt_colinfo type tsfcolinfo," Table – Columns
+      lv_colinfo TYPE ssfcolinfo, " Work area for the table
+      lt_border  TYPE tsfctaba,   " Tables – Borders
+      lv_border  TYPE ssfctaba.   "Work Area for the border
+
+data dec type p decimals 2 .
+ASSIGN ('(SAPLSTXBC)TABDEFS') TO <f_tab>.
+*break-point.
+loop at <f_tab> into lv_tabdef.
+  "Table line
+  "For per row height
+  loop at lv_tabdef-tltypeass into lv_ltypesass.
+    if lv_ltypesass-linetype = '%C1'.
+      lv_ltypesass-lheightv = '1.5'.
+      dec  = ( lv_ltypesass-lheightv * 14400 ) / 254. "CM to TW = 754
+      lv_ltypesass-lheight = floor( dec ).
+    elseif lv_ltypesass-linetype = '%C2'.
+      lv_ltypesass-lheightv = '18.5'.
+      dec  = ( lv_ltypesass-lheightv * 14400 ) / 254. "CM to TW = 754
+      lv_ltypesass-lheight = floor( dec ).      
+    endif.
+    modify lv_tabdef-tltypeass from lv_ltypesass.
+  endloop.
+  modify <f_tab> from lv_tabdef.
+  "For columns width
+  loop at lv_tabdef-tltype into lv_ltypes. "inside TLTYPE
+    if lv_ltypes-linetype = '%C1'.
+      loop at lv_ltypes-tcolinfo into lv_colinfo.
+       case sy-tabix.
+          when 1.
+            lv_colinfo-widthv = '1.33'.
+*            lv_colinfo-width  = '754'.
+            dec  = ( lv_colinfo-widthv * 144000 ) / 254. "CM to TW = 754
+            lv_colinfo-width = floor( dec ).
+
+          when 2.
+            lv_colinfo-widthv = '2.56'.
+*            lv_colinfo-width  = '1451'.
+            dec  = ( lv_colinfo-widthv * 144000 ) / 254. "CM to TW = 754
+            lv_colinfo-width = floor( dec ).
+
+          when 3.
+            lv_colinfo-widthv = '12.11'.
+*            lv_colinfo-width  = '6866'.
+            dec  = ( lv_colinfo-widthv * 144000 ) / 254. "CM to TW = 754
+            lv_colinfo-width = floor( dec ).
+        endcase.
+        modify lv_ltypes-tcolinfo from lv_colinfo.
+      endloop.
+    endif.
+    modify lv_tabdef-tltype from lv_ltypes.
+  endloop.
+  modify <f_tab> from lv_tabdef.
+endloop.
