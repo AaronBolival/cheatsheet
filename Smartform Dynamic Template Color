@@ -1,0 +1,40 @@
+"In Main Window / any window create a program line. 
+
+
+FIELD-SYMBOLS: <f_tab> TYPE tsftabdef.
+
+DATA: lv_tabdef  TYPE ssftabdef,  " Work Area for the Table
+      lt_ltypes  TYPE tsfltype,   " Table – Line types
+      lv_ltypes  TYPE ssfltype,   " Work Area for the table
+      lt_colinfo type tsfcolinfo," Table – Columns
+      lv_colinfo TYPE ssfcolinfo, " Work area for the table
+      lt_border  TYPE tsfctaba,   " Tables – Borders
+      lv_border  TYPE ssfctaba.   "Work Area for the border
+
+ASSIGN ('(SAPLSTXBC)TABDEFS') TO <f_tab>.
+*break-point.
+loop at <f_tab> into lv_tabdef.
+  "Table line
+  loop at lv_tabdef-tltype into lv_ltypes. "inside TLTYPE
+    if lv_ltypes-linetype = '%C1'.   "%C1 is the line type name / row
+      loop at lv_ltypes-tcolinfo into lv_colinfo.
+        if sy-tabix = '2'. " 3rd cell
+          loop at lv_colinfo-borders into lv_border.
+            "use the border and cell
+            lv_border-fillcolor-used = 'X'.
+            lv_border-cfillcolor-color = 'X'.
+            lv_border-intensity = '100'.
+            "assign color
+            lv_border-cfillcolor-xred = 'FF'.
+            lv_border-cfillcolor-xgreen = '00'.
+            lv_border-cfillcolor-xblue = '11'.
+            modify lv_colinfo-borders from lv_border.
+          endloop.
+        endif.
+         MODIFY lv_ltypes-tcolinfo FROM lv_colinfo.
+      endloop.
+    endif.
+      MODIFY lv_tabdef-tltype FROM lv_ltypes.
+  endloop.
+  MODIFY <f_tab> FROM lv_tabdef.
+endloop.
