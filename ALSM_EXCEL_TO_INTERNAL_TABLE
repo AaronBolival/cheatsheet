@@ -101,4 +101,92 @@ ENDLOOP.
 APPEND gs_input_data TO gt_input_data.
 CLEAR gs_input_data.
 
+"OR
+"======================================================================================================================================================================
+  CALL FUNCTION 'ALSM_EXCEL_TO_INTERNAL_TABLE'
+    EXPORTING
+      filename                = file1
+      i_begin_col             = 1
+      i_begin_row             = 2
+      i_end_col               = 23
+      i_end_row               = 65000
+*     VALUESHEET              = 1
+    TABLES
+      intern                  = it_data
+    EXCEPTIONS
+      inconsistent_parameters = 1
+      upload_ole              = 2
+      OTHERS                  = 3.
 
+  IF sy-subrc <> 0.
+    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+       WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+
+  IF NOT it_data[] IS INITIAL.
+
+    SORT it_data BY row col.
+
+    LOOP AT it_data.
+      CASE it_data-col.
+        WHEN '0001'.
+          rec1-blart = it_data-value.
+        WHEN '0002'.
+          WRITE it_data-value TO rec1-bldat.
+*          PERFORM date_format_local USING it_data-value
+*                                 CHANGING rec1-bldat.
+        WHEN '0003'.
+          rec1-xblnr = it_data-value.
+        WHEN '0004'.
+          rec1-bktxt = it_data-value.
+        WHEN '0005'.
+          rec1-waers = it_data-value.
+        WHEN '0006'.
+          rec1-kursf = it_data-value.
+        WHEN '0007'.
+          rec1-bschl = it_data-value.
+        WHEN '0008'.
+          rec1-hkont = it_data-value.
+        WHEN '0009'.
+          rec1-newum = it_data-value.
+        WHEN '0010'.
+          rec1-kostl = it_data-value.
+        WHEN '0011'.
+          rec1-prctr = it_data-value.
+        WHEN '0012'.
+          rec1-aufnr = it_data-value.
+        WHEN '0013'.
+          rec1-wrbtr = it_data-value.
+        WHEN '0014'.
+          rec1-dmbtr = it_data-value.
+        WHEN '0015'.
+          rec1-sgtxt = it_data-value.
+        WHEN '0016'.
+          rec1-mwskz = it_data-value.
+        WHEN '0017'.
+          rec1-zterm = it_data-value.
+        WHEN '0018'.
+          rec1-zuonr = it_data-value.
+        WHEN '0019'.
+          rec1-xmwst = it_data-value.
+        WHEN '0020'.
+          WRITE it_data-value TO rec1-zfbdt.
+*          PERFORM date_format_local USING it_data-value
+*                                 CHANGING rec1-zfbdt.
+        WHEN '0021'.
+          rec1-qsshb = it_data-value.
+        WHEN '0022'.
+          rec1-qsfbt = it_data-value.
+        WHEN '0023'.
+          rec1-qsskz = it_data-value.
+      ENDCASE.
+
+      AT END OF row.
+        rec1-bukrs = g_comp_code.                   "HPECC-20160322
+        APPEND rec1.
+        CLEAR rec1.
+      ENDAT.
+
+    ENDLOOP.
+*
+  ENDIF.
