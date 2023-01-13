@@ -182,7 +182,7 @@ CLEAR gs_input_data.
       ENDCASE.
 
       AT END OF row.
-        rec1-bukrs = g_comp_code.                   "HPECC-20160322
+        rec1-bukrs = g_comp_code.                  
         APPEND rec1.
         CLEAR rec1.
       ENDAT.
