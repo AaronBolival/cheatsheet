@@ -1,0 +1,38 @@
+DATA: lo_salv_table TYPE REF TO cl_salv_table,
+      lo_columns TYPE REF TO cl_salv_columns_table,
+      lo_column TYPE REF TO cl_salv_column.
+
+TYPES: BEGIN OF ts_display,
+  icon TYPE c LENGTH 4,
+  ilot TYPE string,
+  message TYPE string,
+END OF ts_display.
+
+ CALL METHOD cl_salv_table=>factory
+    EXPORTING
+      list_display   = IF_SALV_C_BOOL_SAP=>TRUE
+    IMPORTING
+      r_salv_table   =  lo_salv_table
+    CHANGING
+      t_table        = lt_display
+    .
+    lo_columns = lo_salv_table->get_columns( ).
+    lo_column = lo_columns->get_column( 'ICON' ).
+    lo_column->set_short_text( 'Status' ).
+    lo_column->set_medium_text( 'Status' ).
+    lo_column->set_long_text( 'Status' ).
+
+    lo_column = lo_columns->get_column( 'ILOT' ).
+    lo_column->set_short_text( 'Insp Lot' ).
+    lo_column->set_medium_text( 'Inspection Lot' ).
+    lo_column->set_long_text( 'Inspection Lot' ).
+
+
+    lo_column = lo_columns->get_column( 'MESSAGE' ).
+    lo_column->set_short_text( 'Details' ).
+    lo_column->set_medium_text( 'Details' ).
+    lo_column->set_long_text( 'Details' ).
+
+    lo_columns->set_optimize(  ).
+
+    lo_salv_table->display( ).
