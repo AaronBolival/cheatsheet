@@ -11,3 +11,17 @@ loop at lt_t100 assigning <fs_t100>.
     append initial line to lt_t1002 assigning <fs_t1002>. "add a initial row / fields with data type of t100
     <fs_t1002>-text = <fs_t100>-text.                     "transfer the field of workarea<fs_t100> to <fs_t1002>
 endloop.
+-------------------------------------------
+  FIELD-SYMBOLS: <fs_header> TYPE any.
+  DATA: lv_desc_int TYPE i,
+        ls_header_temp TYPE zsd_daycode_manufacture.
+  MOVE-CORRESPONDING ls_header TO ls_header_temp.
+  DESCRIBE FIELD ls_header_temp TYPE ls_header_temp COMPONENTS lv_desc_int.
+  DO lv_desc_int TIMES.
+    ASSIGN COMPONENT sy-index OF STRUCTURE ls_header TO <fs_header>.
+    IF <fs_header> IS NOT INITIAL.
+      LOOP AT lt_not_allowed_symbols INTO lv_not_allowed_symbols.
+        REPLACE ALL OCCURENCES OF lv_not_allowed_symbols-low IN <fs_header> WITH lv_blank.
+      ENDLOOP.
+    ENDIF.
+  ENDDO.
